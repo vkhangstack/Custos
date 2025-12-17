@@ -57,7 +57,7 @@ func main() {
 		Menu:             AppMenu,
 		Linux: &linux.Options{
 			Icon:        []byte("frontend/src/assets/images/logo-universal.png"),
-			ProgramName: "Custos",
+			ProgramName: "custos",
 		},
 		LogLevel:           logger.DEBUG,
 		LogLevelProduction: logger.WARNING,
