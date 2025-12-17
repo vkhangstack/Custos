@@ -1,3 +1,6 @@
 build/bin
 node_modules
 frontend/dist
+application-logs.txt
+Custos*.deb
+custos.db
