@@ -16,12 +16,13 @@ import (
 // Server manages the proxy listeners
 // Server manages the proxy listeners
 type Server struct {
-	store       store.Store
-	blocklist   *core.BlocklistManager
-	socksServer *socks5.Server
-	port        int
-	running     bool
-	listener    net.Listener
+	store             store.Store
+	blocklist         *core.BlocklistManager
+	socksServer       *socks5.Server
+	port              int
+	running           bool
+	listener          net.Listener
+	protectionEnabled bool
 }
 
 // NewServer creates a new proxy server
@@ -33,45 +34,44 @@ func NewServer(store store.Store, blocklist *core.BlocklistManager, port int) *S
 	}
 }
 
+// SetProtection enables or disables the HTTP protection
+func (s *Server) SetProtection(enabled bool) {
+	s.protectionEnabled = enabled
+	log.Printf("Protection mode set to: %v", enabled)
+}
+
 const logIDKey = "logID"
 
 // Start starts the SOCKS5 proxy
 func (s *Server) Start() error {
 	conf := &socks5.Config{
 		Logger: log.New(log.Writer(), "[SOCKS5] ", log.LstdFlags),
-		Rules:  &LoggingRuleSet{store: s.store, blocklist: s.blocklist},
+		Rules:  &LoggingRuleSet{store: s.store, blocklist: s.blocklist, server: s},
 		Dial: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			// Extract ID early to update status on failure
+			logID, hasLogID := ctx.Value(logIDKey).(string)
+
 			// Dial upstream
 			conn, err := net.Dial(network, addr)
 			if err != nil {
+				if hasLogID {
+					// Update log status to error
+					s.store.UpdateLog(core.LogEntry{
+						ID:     logID,
+						Status: "connection_failed",
+					})
+				}
 				return nil, err
 			}
 
 			// Wrap if we have a logID
-			if logID, ok := ctx.Value(logIDKey).(string); ok {
+			if hasLogID {
 				fmt.Printf("[DEBUG] Dialing for logID: %s\n", logID)
 				return &CountingConn{
 					Conn:  conn,
 					logID: logID,
 					entry: core.LogEntry{
 						ID: logID,
-						// Other fields will be updated by UpdateLog, but ID is critical
-						// We might want to pass more context if needed, but for now ID is enough to find/update it?
-						// Wait, UpdateLog in SQLite uses Save(&entry). It overwrites EVERYTHING.
-						// So we need to ensure the entry we pass to UpdateLog has the other fields correct?
-						// Or at least doesn't blank them out.
-						// UpdateLog implementation: db.Save(&entry).
-						// If I pass an empty struct with just ID and bytes, GORM might blank out Domain/IP/etc.
-						// This IS A PROBLEM with GORM Save.
-						// Solution: UpdateLog should use db.Model().Updates().
-						// Let's fix SQLiteStore.UpdateLog in previous step? Or here?
-						// Better: fetch the entry first? No, performance.
-						// Better: Pass only fields to update?
-						// Or make CountingConn smarter.
-						// For now, let's inject a "Partial Update" logic in Store or handle it.
-						// But I can't easily change Store interface again without refactor.
-						// If UpdateLog does Save, I must provide full object.
-						// So I need to pass the FULL LogEntry to Dial.
 					},
 					store: s.store,
 				}, nil
@@ -119,27 +119,58 @@ func (s *Server) Stop() {
 type LoggingRuleSet struct {
 	store     store.Store
 	blocklist *core.BlocklistManager
+	server    *Server
 }
 
 func (r *LoggingRuleSet) Allow(ctx context.Context, req *socks5.Request) (context.Context, bool) {
-	// Check Blocklist
 	domain := req.DestAddr.FQDN
-	if r.blocklist.IsBlocked(domain) {
-		entry := core.LogEntry{
-			ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
-			Timestamp: time.Now(),
-			Type:      "proxy",
-			DstIP:     req.DestAddr.IP.String(),
-			DstPort:   req.DestAddr.Port,
-			Domain:    domain,
-			Protocol:  "tcp",
-			Status:    "blocked",
-			BytesSent: 0,
-			BytesRecv: 0,
+
+	// Whitelist Localhost/Loopback
+	// Always allow local traffic to bypass protection and blocks
+	if domain == "localhost" || req.DestAddr.IP.IsLoopback() {
+		return ctx, true
+	}
+
+	// Check Protection Mode (Block HTTP Port 80)
+	if r.server.protectionEnabled {
+		if req.DestAddr.Port == 80 {
+			r.logBlock(req, domain, "protection_http_blocked")
+			log.Printf("Blocked HTTP request to %s (Port 80) due to active protection", domain)
+			return ctx, false
 		}
-		r.store.AddLog(entry)
+	}
+
+	// Check Blocklist
+	if r.blocklist.IsBlocked(domain) {
+		r.logBlock(req, domain, "blocklist")
 		return ctx, false
 	}
+
+	// Check Custom Rules
+	// Optimized: Could cache this or use a more efficient matcher
+	rules := r.store.GetRules()
+	for _, rule := range rules {
+		if !rule.Enabled {
+			continue
+		}
+		// Simple wildcard matching or substring?
+		// User said "pattern". Let's assume glob or exact.
+		// For MVP, let's support exact match or domain suffix.
+		// If rule.Pattern == domain ...
+		// Go's filepath.Match is good for globs.
+		if matched, _ := matchDomain(rule.Pattern, domain); matched {
+			if rule.Type == core.RuleBlock {
+				r.logBlock(req, domain, "custom_rule")
+				return ctx, false
+			}
+			// If ALLOW, we stop checking other block rules?
+			// Typically whitelist overrides blacklist.
+			// But here we just proceed.
+			break
+		}
+	}
+
+	// ... continue to allow
 
 	// Log the connection attempt
 	// Define variables
@@ -164,4 +195,34 @@ func (r *LoggingRuleSet) Allow(ctx context.Context, req *socks5.Request) (contex
 
 	// Inject logID into context for Dial to pick up
 	return context.WithValue(ctx, logIDKey, entry.ID), true
+}
+
+// matchDomain checks if domain matches pattern
+// Pattern support: *.google.com, google.com (exact)
+func matchDomain(pattern, domain string) (bool, error) {
+	// Simple implementation
+	// If pattern starts with *., match suffix
+	if len(pattern) > 2 && pattern[:2] == "*." {
+		suffix := pattern[2:]
+		if len(domain) >= len(suffix) && domain[len(domain)-len(suffix):] == suffix {
+			return true, nil
+		}
+	}
+	return pattern == domain, nil
+}
+
+func (r *LoggingRuleSet) logBlock(req *socks5.Request, domain string, reason string) {
+	entry := core.LogEntry{
+		ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
+		Timestamp: time.Now(),
+		Type:      "proxy",
+		DstIP:     req.DestAddr.IP.String(),
+		DstPort:   req.DestAddr.Port,
+		Domain:    domain,
+		Protocol:  "tcp",
+		Status:    "blocked", // or "blocked:" + reason
+		BytesSent: 0,
+		BytesRecv: 0,
+	}
+	r.store.AddLog(entry)
 }

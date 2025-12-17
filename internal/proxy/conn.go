@@ -5,8 +5,9 @@ import (
 	"Custos/internal/store"
 	"fmt"
 	"net"
+	"sync"
 	"sync/atomic"
-	"time" // Added for time.Now().UnixMilli()
+	"time"
 )
 
 // CountingConn wraps a net.Conn to track bytes sent and received
@@ -17,7 +18,11 @@ type CountingConn struct {
 	store      store.Store
 	bytesSent  int64
 	bytesRecv  int64
-	lastUpdate int64 // UnixMilli timestamp of last db update
+	lastUpdate int64 // UnixMilli timestamp of last checking
+
+	mu           sync.Mutex
+	reportedSent int64
+	reportedRecv int64
 }
 
 const updateIntervalMilli = 1000 // Update DB at most once per second
@@ -42,58 +47,55 @@ func (c *CountingConn) Write(b []byte) (n int, err error) {
 	return
 }
 
-// tryUpdate updates the DB if enough time has passed
+// tryUpdate checks if a report is needed
 func (c *CountingConn) tryUpdate() {
 	now := time.Now().UnixMilli()
 	last := atomic.LoadInt64(&c.lastUpdate)
-	fmt.Printf("[DEBUG] TryUpdate conn %s. Sent: %d, Recv: %d\n", c.entry.ID, c.bytesSent, c.bytesRecv)
 
 	if now-last > updateIntervalMilli {
-		// Try to swap to prevent concurrent updates (thundering herd is unlikely on single conn but good practice)
+		// Try to swap to prevent concurrent updates
 		if atomic.CompareAndSwapInt64(&c.lastUpdate, last, now) {
-			go c.doUpdate()
+			go c.report()
 		}
 	}
 }
 
-// doUpdate performs the actual store update
-func (c *CountingConn) doUpdate() {
-	sent := atomic.LoadInt64(&c.bytesSent)
-	recv := atomic.LoadInt64(&c.bytesRecv)
+// report performs the actual DB update calculating deltas
+func (c *CountingConn) report() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	// Create a copy for update
-	updateEntry := c.entry
-	updateEntry.BytesSent = sent
-	updateEntry.BytesRecv = recv
-	fmt.Printf("[DEBUG] Update conn %s. Sent: %d, Recv: %d\n", c.entry.ID, sent, recv)
+	currSent := atomic.LoadInt64(&c.bytesSent)
+	currRecv := atomic.LoadInt64(&c.bytesRecv)
 
-	// We only update the log entry table, NOT the global traffic stats (AddedTraffic)
-	// Global stats should arguably only update on Close or separate periodic sync to avoid write hotspots.
-	// For "Live Logs" visuals, updating the log entry is enough.
-	c.store.UpdateLog(updateEntry)
+	deltaSent := currSent - c.reportedSent
+	deltaRecv := currRecv - c.reportedRecv
+
+	if deltaSent == 0 && deltaRecv == 0 {
+		return
+	}
+
+	// 1. Update Global Stats (Incremental)
+	c.store.AddTraffic(deltaSent, deltaRecv)
+
+	// 2. Update reported cursors
+	c.reportedSent = currSent
+	c.reportedRecv = currRecv
+
+	// 3. Update Log Entry (Total)
+	c.entry.BytesSent = currSent
+	c.entry.BytesRecv = currRecv
+
+	// Debug log only on significant updates or errors?
+	// fmt.Printf("[DEBUG] Report conn %s. Delta: %d/%d Total: %d/%d\n", c.entry.ID, deltaSent, deltaRecv, currSent, currRecv)
+
+	c.store.UpdateLog(c.entry)
 }
 
 // Close wraps Close to log final stats
 func (c *CountingConn) Close() error {
-	// Update final Log
-	sent := atomic.LoadInt64(&c.bytesSent)
-	recv := atomic.LoadInt64(&c.bytesRecv)
-
-	// Update Log Entry
-	c.entry.BytesSent = sent
-	c.entry.BytesRecv = recv
-
-	// Debug Log
-	fmt.Printf("[DEBUG] Close conn %s. Sent: %d, Recv: %d\n", c.entry.ID, sent, recv)
-
-	// The core.LogEntry has Latency field. Let's calculate duration.
-	// But we don't track start time here. We could.
-	// Let's assume latency was initial connection time.
-
-	c.store.UpdateLog(c.entry)
-
-	// Add to global stats ONLY on close to ensure we don't double count or hammer DB
-	c.store.AddTraffic(sent, recv)
-
+	// Force a final report
+	c.report()
+	fmt.Printf("[DEBUG] Closed conn %s. Final sent/recv: %d/%d\n", c.entry.ID, c.reportedSent, c.reportedRecv)
 	return c.Conn.Close()
 }

@@ -1,5 +1,5 @@
 
-import { Ban, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Ban, CheckCircle, AlertTriangle, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 interface Rule {
@@ -9,15 +9,18 @@ interface Rule {
     type: 'block' | 'allow' | 'redirect';
     active: boolean;
     hits: number;
-    category: 'ads' | 'security' | 'custom' | 'privacy';
+    category?: 'ads' | 'security' | 'custom' | 'privacy';
+    source: 'default' | 'custom';
 }
 
 interface RuleItemProps {
     rule: Rule;
     onToggle: (id: string) => void;
+    onDelete?: (id: string) => void;
 }
 
-const RuleItem = ({ rule, onToggle }: RuleItemProps) => {
+const RuleItem = ({ rule, onToggle, onDelete }: RuleItemProps) => {
+    console.log("rule", rule)
     const { t } = useTranslation();
     return (
         <div className="p-4 hover:bg-muted/50 transition-colors flex items-center justify-between group">
@@ -53,13 +56,22 @@ const RuleItem = ({ rule, onToggle }: RuleItemProps) => {
                     <span className="block text-xs text-muted-foreground uppercase font-semibold">{t('rules.hits')}</span>
                     <span className="font-mono text-foreground">{rule.hits.toLocaleString()}</span>
                 </div>
-                <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${rule.category === 'ads' ? 'bg-purple-500/10 text-purple-500' :
-                    rule.category === 'security' ? 'bg-orange-500/10 text-orange-500' :
-                        rule.category === 'privacy' ? 'bg-cyan-500/10 text-cyan-500' :
-                            'bg-muted text-muted-foreground'
+                <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${rule.source === 'default' ? 'bg-muted text-muted-foreground' :
+                    rule.source === 'custom' ? 'bg-primary text-primary-foreground' :
+                        'bg-muted text-muted-foreground'
                     } `}>
-                    {rule.category}
+                    {rule.source}
                 </span>
+
+                {onDelete && (
+                    <button
+                        onClick={() => onDelete(rule.id)}
+                        className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded transition-colors"
+                        title="Delete Rule"
+                    >
+                        <Trash2 size={18} />
+                    </button>
+                )}
             </div>
         </div>
     );

@@ -43,12 +43,18 @@ const (
 	RuleAllow RuleType = "ALLOW"
 )
 
+const (
+	RuleSourceDefault RuleType = "default"
+	RuleSourceCustom  RuleType = "custom"
+)
+
 // Rule represents a filtering rule
 type Rule struct {
 	ID      string   `json:"id"`
 	Type    RuleType `json:"type"`
 	Pattern string   `json:"pattern"` // e.g., "*.ads.com"
 	Enabled bool     `json:"enabled"`
+	Source  RuleType `json:"source"` // "custom" or "default"
 }
 
 // TrafficStatsModel is the DB model for persistent stats
@@ -56,4 +62,16 @@ type TrafficStatsModel struct {
 	ID            string `gorm:"primaryKey"`
 	TotalUpload   int64
 	TotalDownload int64
+}
+
+// PaginatedRulesResponse wraps rules and total count
+type PaginatedRulesResponse struct {
+	Rules []Rule `json:"rules"`
+	Total int64  `json:"total"`
+}
+
+// AppSetting represents a key-value setting
+type AppSetting struct {
+	Key   string `gorm:"primaryKey" json:"key"`
+	Value string `json:"value"`
 }

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import StatCard from '../components/dashboard/StatCard';
 import TrafficChart from '../components/dashboard/TrafficChart';
 import TopUsageList from '../components/dashboard/TopUsageList';
-import { SetSystemProxy, GetStats, GetSystemConnections, GetChartData } from '../../wailsjs/go/main/App';
+import { GetStats, GetSystemConnections, GetChartData, EnableProtection, GetProtectionStatus } from '../../wailsjs/go/main/App';
 import { core, system } from '../../wailsjs/go/models';
 
 const generateMockChartData = () => {
@@ -91,6 +91,11 @@ export default function Dashboard() {
                 // Fill with empty if no history
                 setChartData(Array(20).fill({ name: '', upload: 0, download: 0 }));
             }
+
+            // Fetch initial protection status
+            const enabled = await GetProtectionStatus();
+            setProtectionEnabled(enabled);
+
             await fetchData();
         };
         init();
@@ -104,7 +109,7 @@ export default function Dashboard() {
 
     const toggleProtection = async () => {
         try {
-            await SetSystemProxy(!protectionEnabled);
+            await EnableProtection(!protectionEnabled);
             setProtectionEnabled(!protectionEnabled);
         } catch (error) {
             console.error("Failed to toggle protection:", error);
@@ -149,17 +154,16 @@ export default function Dashboard() {
         <div className="p-6 space-y-6 bg-background min-h-screen text-foreground">
             <div className="flex justify-between items-center mb-4">
                 <h1 className="text-2xl font-bold">{t('dashboard.title')}</h1>
-                {/* <button
+                <button
                     onClick={toggleProtection}
-                    className={`flex items - center gap - 2 px - 4 py - 2 rounded - lg font - medium transition - colors ${
-    protectionEnabled
-        ? 'bg-green-500/20 text-green-500 border border-green-500/50 hover:bg-green-500/30'
-        : 'bg-red-500/20 text-red-500 border border-red-500/50 hover:bg-red-500/30'
-} `}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${protectionEnabled
+                        ? 'bg-green-500/20 text-green-500 border border-green-500/50 hover:bg-green-500/30'
+                        : 'bg-red-500/20 text-red-500 border border-red-500/50 hover:bg-red-500/30'
+                        } `}
                 >
                     {protectionEnabled ? <Shield size={20} /> : <ShieldAlert size={20} />}
-                    {protectionEnabled ? 'Protection Active' : t('dashboard.enableProtection')}
-                </button> */}
+                    {protectionEnabled ? t('dashboard.disableProtection') : t('dashboard.enableProtection')}
+                </button>
             </div>
 
             {/* Status Cards */}

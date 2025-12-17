@@ -3,9 +3,23 @@
 import {core} from '../models';
 import {system} from '../models';
 
+export function AddRule(arg1:string,arg2:string):Promise<void>;
+
+export function DeleteRule(arg1:string):Promise<void>;
+
+export function EnableProtection(arg1:boolean):Promise<void>;
+
 export function GetChartData():Promise<Array<core.TrafficDataPoint>>;
 
 export function GetLogs():Promise<Array<core.LogEntry>>;
+
+export function GetProtectionStatus():Promise<boolean>;
+
+export function GetRules():Promise<Array<core.Rule>>;
+
+export function GetRulesPaginated(arg1:number,arg2:number,arg3:string):Promise<core.PaginatedRulesResponse>;
+
+export function GetStartupStatus():Promise<boolean>;
 
 export function GetStats():Promise<core.Stats>;
 
@@ -13,4 +27,8 @@ export function GetSystemConnections():Promise<Array<system.ConnectionInfo>>;
 
 export function Greet(arg1:string):Promise<string>;
 
+export function SetRunOnStartup(arg1:boolean):Promise<void>;
+
 export function SetSystemProxy(arg1:boolean):Promise<void>;
+
+export function ToggleRule(arg1:string,arg2:boolean):Promise<void>;

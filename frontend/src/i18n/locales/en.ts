@@ -28,7 +28,8 @@ export const en = {
             topUsage: "Top Usage",
             download: "Download",
             upload: "Upload",
-            enableProtection: "Enable Protection"
+            enableProtection: "Enable Protection",
+            disableProtection: "Disable Protection"
         },
         traffic: {
             title: "Traffic Monitoring",

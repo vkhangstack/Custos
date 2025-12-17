@@ -2,6 +2,7 @@ package store
 
 import (
 	"Custos/internal/core"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -129,3 +130,19 @@ func (s *MemoryStore) ResetStats() {
 		TopDomains: make(map[string]int64),
 	}
 }
+
+func (s *MemoryStore) AddRule(rule core.Rule) error { return nil }
+func (s *MemoryStore) GetRules() []core.Rule        { return nil }
+func (s *MemoryStore) GetRulesPaginated(page, pageSize int, search string) ([]core.Rule, int64, error) {
+	return []core.Rule{}, 0, nil
+}
+
+func (s *MemoryStore) GetSetting(key string) (string, error) {
+	return "", fmt.Errorf("not implemented")
+}
+
+func (s *MemoryStore) SetSetting(key, value string) error {
+	return nil
+}
+func (s *MemoryStore) DeleteRule(id string) error      { return nil }
+func (s *MemoryStore) UpdateRule(rule core.Rule) error { return nil }

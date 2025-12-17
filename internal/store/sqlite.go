@@ -2,7 +2,11 @@ package store
 
 import (
 	"Custos/internal/core"
+	"bufio"
+	"fmt"
 	"log"
+	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -16,6 +20,11 @@ type SQLiteStore struct {
 	db          *gorm.DB
 	subscribers []func(core.LogEntry)
 	mu          sync.RWMutex
+
+	// Rule Cache
+	cachedRules []core.Rule
+	rulesLoaded bool
+	cacheMu     sync.RWMutex
 }
 
 // NewSQLiteStore creates a new persistent store
@@ -27,17 +36,12 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 		return nil, err
 	}
 
-	// Migrate Schema
-	if err := db.AutoMigrate(&core.LogEntry{}, &core.TrafficStatsModel{}); err != nil {
+	// Auto-migrate schema
+	if err := db.AutoMigrate(&core.LogEntry{}, &core.TrafficStatsModel{}, &core.Rule{}, &core.AppSetting{}); err != nil {
 		return nil, err
 	}
 
 	// Initialize Stats if not present or resync
-	// "sum when start app": We ensure the stats model is consistent with logs on startup
-	// or just initialized. For performance, we might trust it if it exists,
-	// but user asked to sum when start app. Let's doing a sync check or just load it.
-	// Actually, if we use the table, we should trust it, UNLESS it's empty and we have logs.
-
 	var stats core.TrafficStatsModel
 	if err := db.First(&stats, "id = ?", "global").Error; err != nil {
 		// Not found, create it with sum from logs (Migration logic)
@@ -56,9 +60,23 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 		log.Printf("Initialized global stats from logs: Up=%d, Down=%d", stats.TotalUpload, stats.TotalDownload)
 	}
 
-	return &SQLiteStore{
+	// Seed Default Rules if empty
+	s := &SQLiteStore{
 		db: db,
-	}, nil
+	}
+
+	go func() {
+		s.seedDefaultRules()
+	}()
+
+	return s, nil
+}
+
+// Subscribe adds a listener
+func (s *SQLiteStore) Subscribe(callback func(core.LogEntry)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.subscribers = append(s.subscribers, callback)
 }
 
 // AddLog adds a log entry
@@ -221,15 +239,205 @@ func (s *SQLiteStore) GetTrafficHistory(duration time.Duration) []core.TrafficDa
 }
 
 // Subscribe adds a listener
-func (s *SQLiteStore) Subscribe(callback func(core.LogEntry)) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.subscribers = append(s.subscribers, callback)
-}
-
 func (s *SQLiteStore) ResetStats() {
 	// Use Exec for direct deletion to bypass GORM's global delete protection if enabled
 	// and to ensure efficient clearing.
 	s.db.Exec("DELETE FROM traffic_stats_models WHERE id = ?", "global")
 	s.db.Exec("DELETE FROM log_entries")
+	s.db.Exec("DELETE FROM traffic_stats_models")
+	s.db.Exec("DELETE FROM stats")
+}
+
+// Rule Management Implementation
+
+func (s *SQLiteStore) AddRule(rule core.Rule) error {
+	if err := s.db.Create(&rule).Error; err != nil {
+		return err
+	}
+	s.invalidateCache()
+	return nil
+}
+
+func (s *SQLiteStore) GetRules() []core.Rule {
+	s.cacheMu.RLock()
+	if s.rulesLoaded {
+		defer s.cacheMu.RUnlock()
+		return s.cachedRules
+	}
+	s.cacheMu.RUnlock()
+
+	s.cacheMu.Lock()
+	defer s.cacheMu.Unlock()
+
+	// Double check
+	if s.rulesLoaded {
+		return s.cachedRules
+	}
+
+	var rules []core.Rule
+	s.db.Find(&rules)
+	s.cachedRules = rules
+	s.rulesLoaded = true
+	return rules
+}
+
+func (s *SQLiteStore) GetRulesPaginated(page, pageSize int, search string) ([]core.Rule, int64, error) {
+	var rules []core.Rule
+	var total int64
+
+	offset := (page - 1) * pageSize
+	query := s.db.Model(&core.Rule{})
+
+	if search != "" {
+		likePattern := "%" + search + "%"
+		query = query.Where("pattern LIKE ?", likePattern)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Sort by Source ASC (Custom first), then ID DESC (Newest first)
+	if err := query.Order("source asc, id desc").Offset(offset).Limit(pageSize).Find(&rules).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return rules, total, nil
+}
+
+func (s *SQLiteStore) DeleteRule(id string) error {
+	if err := s.db.Delete(&core.Rule{}, "id = ?", id).Error; err != nil {
+		return err
+	}
+	s.invalidateCache()
+	return nil
+}
+
+func (s *SQLiteStore) UpdateRule(rule core.Rule) error {
+	// GORM Updates with struct ignores zero values (false, 0, "").
+	// We use map to ensure Enabled=false is applied, but we must only include
+	// other fields if they are set (to avoid overwriting with empty strings during toggle).
+	updates := map[string]interface{}{
+		"enabled": rule.Enabled,
+	}
+
+	if rule.Pattern != "" {
+		updates["pattern"] = rule.Pattern
+	}
+	if rule.Type != "" {
+		updates["type"] = rule.Type
+	}
+	if rule.Source != "" {
+		updates["source"] = rule.Source
+	}
+
+	err := s.db.Model(&core.Rule{}).Where("id = ?", rule.ID).Updates(updates).Error
+
+	if err != nil {
+		return err
+	}
+	s.invalidateCache()
+	return nil
+}
+
+func (s *SQLiteStore) invalidateCache() {
+	s.cacheMu.Lock()
+	defer s.cacheMu.Unlock()
+	s.rulesLoaded = false
+}
+
+// Settings
+func (s *SQLiteStore) GetSetting(key string) (string, error) {
+	var setting core.AppSetting
+	if err := s.db.First(&setting, "key = ?", key).Error; err != nil {
+		return "", err
+	}
+	return setting.Value, nil
+}
+
+func (s *SQLiteStore) SetSetting(key, value string) error {
+	setting := core.AppSetting{Key: key, Value: value}
+	// Upsert
+	return s.db.Save(&setting).Error
+}
+
+// seedDefaultRules fetches and applies a default blocklist
+func (s *SQLiteStore) seedDefaultRules() {
+	url := "https://adaway.org/hosts.txt"
+	log.Println("Seeding default rules from", url)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		log.Printf("Failed to fetch blocklist: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	var rules []core.Rule
+	scanner := bufio.NewScanner(resp.Body)
+
+	// Fetch existing default rules to avoid duplicates
+	existingRules := make(map[string]bool)
+	var currentDefaults []core.Rule
+	// Optimize: Select only pattern for default rules
+	s.db.Model(&core.Rule{}).Where("source = ?", core.RuleSourceDefault).Select("pattern").Find(&currentDefaults)
+	for _, r := range currentDefaults {
+		existingRules[r.Pattern] = true
+	}
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix(line, "#") || line == "" {
+			continue
+		}
+		parts := strings.Fields(line)
+		if len(parts) >= 2 {
+			domain := parts[1]
+			if domain == "localhost" || domain == "broadcasthost" || domain == "::1" {
+				continue
+			}
+
+			// Deduplicate against existing DB rules
+			if existingRules[domain] {
+				continue
+			}
+
+			// Also deduplicate within the new batch (hosts file might have dupes)
+			existingRules[domain] = true
+
+			rules = append(rules, core.Rule{
+				ID:      fmt.Sprintf("seed-%d", time.Now().UnixNano()+int64(len(rules))),
+				Type:    core.RuleBlock,
+				Pattern: domain,
+				Enabled: true,
+				Source:  core.RuleSourceDefault,
+			})
+		}
+	}
+
+	if len(rules) > 0 {
+		// Batch insert in chunks to avoid SQLite limits
+		chunkSize := 500
+		for i := 0; i < len(rules); i += chunkSize {
+			end := i + chunkSize
+			if end > len(rules) {
+				end = len(rules)
+			}
+			log.Println("Seeding chunk", i, "to", end)
+			if err := s.db.Create(rules[i:end]).Error; err != nil {
+				log.Printf("Failed to seed chunk: %v", err)
+			}
+		}
+		log.Printf("Seeded %d new rules", len(rules))
+		s.invalidateCache()
+	} else {
+		log.Println("No new rules to seed.")
+	}
+
+	// Invalidate cache so next GetRules fetches them
+	s.invalidateCache()
+}
+
+func (s *SQLiteStore) TruncateRules() error {
+	return s.db.Exec("DELETE FROM rules").Error
 }

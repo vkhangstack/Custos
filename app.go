@@ -58,6 +58,11 @@ func (a *App) startup(ctx context.Context) {
 		fmt.Printf("Failed to set system proxy on startup: %v\n", err)
 	}
 
+	// Restore Protection State
+	if enabled := a.GetProtectionStatus(); enabled {
+		a.proxyServer.SetProtection(true)
+	}
+
 	// Start a ticker to emit logs to frontend
 	go a.broadcastLogs()
 }
@@ -68,7 +73,6 @@ func (a *App) shutdown(ctx context.Context) {
 	if err := a.SetSystemProxy(false); err != nil {
 		fmt.Printf("Failed to disable system proxy on shutdown: %v\n", err)
 	}
-	a.store.ResetStats()
 	a.proxyServer.Stop()
 }
 
@@ -108,8 +112,90 @@ func (a *App) SetSystemProxy(enabled bool) error {
 	return system.SetSystemProxy(enabled, 1080)
 }
 
+// EnableProtection toggles HTTP blocking
+func (a *App) EnableProtection(enabled bool) {
+	a.proxyServer.SetProtection(enabled)
+	// Persist
+	val := "false"
+	if enabled {
+		val = "true"
+	}
+	a.store.SetSetting("protection_enabled", val)
+}
+
+// GetProtectionStatus returns the current status
+func (a *App) GetProtectionStatus() bool {
+	val, err := a.store.GetSetting("protection_enabled")
+	if err != nil {
+		return false
+	}
+	return val == "true"
+}
+
 // GetChartData returns historical traffic data for the chart
 func (a *App) GetChartData() []core.TrafficDataPoint {
 	// Get last 30 minutes of history
 	return a.store.GetTrafficHistory(30 * time.Minute)
+}
+
+// Rule Management
+
+// AddRule adds a new rule
+func (a *App) AddRule(pattern string, ruleType string) error {
+	rule := core.Rule{
+		ID:      fmt.Sprintf("%d", time.Now().UnixNano()),
+		Pattern: pattern,
+		Type:    core.RuleType(ruleType),
+		Enabled: true,
+		Source:  core.RuleSourceCustom,
+	}
+	return a.store.AddRule(rule)
+}
+
+// GetRules returns all rules (legacy/internal use)
+func (a *App) GetRules() []core.Rule {
+	return a.store.GetRules()
+}
+
+// GetRulesPaginated returns rules with pagination
+func (a *App) GetRulesPaginated(page, pageSize int, search string) core.PaginatedRulesResponse {
+	rules, total, err := a.store.GetRulesPaginated(page, pageSize, search)
+	if err != nil {
+		return core.PaginatedRulesResponse{Rules: []core.Rule{}, Total: 0}
+	}
+	return core.PaginatedRulesResponse{Rules: rules, Total: total}
+}
+
+// DeleteRule deletes a rule by ID
+func (a *App) DeleteRule(id string) error {
+	return a.store.DeleteRule(id)
+}
+
+// ToggleRule toggles a rule's enabled status
+// For simplicity, we just look it up or blindly update?
+// Let's implement full UpdateRule in App if needed, or just specific toggle.
+// But frontend might just call Delete/Add. Or we need explicit Toggle.
+// Let's stick to Add/Get/Delete for MVP as per request "add rules and magement".
+func (a *App) ToggleRule(id string, enabled bool) error {
+	// We need to fetch it first? Or just blindly update?
+	// SQLiteStore UpdateRule updates fields present in struct.
+	// We just pass ID and Enabled.
+	return a.store.UpdateRule(core.Rule{ID: id, Enabled: enabled})
+}
+
+// Startup Management
+
+// SetRunOnStartup toggles launch on startup
+func (a *App) SetRunOnStartup(enabled bool) error {
+	return system.SetStartup(enabled)
+}
+
+// GetStartupStatus checks if launch on startup is enabled
+func (a *App) GetStartupStatus() bool {
+	enabled, err := system.IsStartupEnabled()
+	if err != nil {
+		fmt.Printf("Failed to check startup status: %v\n", err)
+		return false
+	}
+	return enabled
 }

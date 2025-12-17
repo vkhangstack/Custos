@@ -28,7 +28,8 @@ export const vi = {
             topUsage: "Sử dụng nhiều nhất",
             download: "Tải xuống",
             upload: "Tải lên",
-            enableProtection: "Bật Bảo vệ"
+            enableProtection: "Bật Bảo vệ",
+            disableProtection: "Tắt Bảo vệ"
         },
         traffic: {
             title: "Giám sát Lưu lượng",
