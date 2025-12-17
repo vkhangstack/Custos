@@ -27,18 +27,24 @@ export const vi = {
             networkTraffic: "Lưu lượng mạng",
             topUsage: "Sử dụng nhiều nhất",
             download: "Tải xuống",
-            upload: "Tải lên"
+            upload: "Tải lên",
+            enableProtection: "Bật Bảo vệ"
         },
         traffic: {
-            title: "Giám sát lưu lượng",
+            title: "Giám sát Lưu lượng",
+            searchPlaceholder: "Tìm kiếm theo miền, IP hoặc tiến trình...",
+            upload: "Tổng Tải lên",
+            download: "Tổng Tải xuống",
+            activeConnections: "Kết nối Hoạt động",
+            logs: "Nhật ký Trực tiếp",
             table: {
                 time: "Thời gian",
                 process: "Tiến trình",
-                domain: "Tên miền / Đích",
+                domain: "Miền / Đích",
                 protocol: "Giao thức",
                 method: "Phương thức",
                 status: "Trạng thái",
-                size: "kích thước",
+                size: "Kích thước",
                 latency: "Độ trễ"
             }
         },

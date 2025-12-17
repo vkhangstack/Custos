@@ -18,10 +18,6 @@ import (
 var assets embed.FS
 
 func main() {
-	// go func() {
-	// StartDNS()
-	// StartProxy()
-	// }()
 	// Create an instance of the app structure
 	app := NewApp()
 
@@ -57,6 +53,7 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup:        app.startup,
+		OnShutdown:       app.shutdown,
 		Menu:             AppMenu,
 		Linux: &linux.Options{
 			Icon:        []byte("frontend/src/assets/images/logo-universal.png"),

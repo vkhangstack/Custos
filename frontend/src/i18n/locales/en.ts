@@ -27,10 +27,16 @@ export const en = {
             networkTraffic: "Network Traffic",
             topUsage: "Top Usage",
             download: "Download",
-            upload: "Upload"
+            upload: "Upload",
+            enableProtection: "Enable Protection"
         },
         traffic: {
             title: "Traffic Monitoring",
+            searchPlaceholder: "Search by domain, IP or process...",
+            upload: "Total Upload",
+            download: "Total Download",
+            activeConnections: "Active Connections",
+            logs: "Live Logs",
             table: {
                 time: "Time",
                 process: "Process",
