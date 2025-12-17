@@ -1,0 +1,17 @@
+name: custos
+arch: amd64
+platform: linux
+version: 1.0.0
+section: utils
+description: Custos - The Privacy First VPN
+maintainer: Pham Van Khang <phamvankhang.tvi@gmail.com>
+license: Apache-2.0
+
+contents:
+  - src: build/bin/Custos
+    dst: /usr/bin/custos
+    type: file
+
+depends:
+  - libgtk-3-0
+  - libwebkit2gtk-4.1-0
