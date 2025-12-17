@@ -1,4 +1,4 @@
-name: Custos
+name: custos
 arch: amd64
 platform: linux
 version: 1.0.0
@@ -9,7 +9,7 @@ license: Apache-2.0
 
 contents:
   - src: build/bin/Custos
-    dst: /usr/bin/Custos
+    dst: /usr/bin/custos
     type: file
 
 depends:
