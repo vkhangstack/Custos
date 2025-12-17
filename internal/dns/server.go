@@ -1,11 +1,12 @@
 package dns
 
 import (
-	"Custos/internal/core"
-	"Custos/internal/store"
 	"fmt"
 	"log"
 	"time"
+
+	"github.com/vkhangstack/Custos/internal/core"
+	"github.com/vkhangstack/Custos/internal/store"
 
 	"github.com/miekg/dns"
 )

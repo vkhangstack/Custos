@@ -1,13 +1,14 @@
 package proxy
 
 import (
-	"Custos/internal/core"
-	"Custos/internal/store"
 	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/vkhangstack/Custos/internal/core"
+	"github.com/vkhangstack/Custos/internal/store"
 )
 
 // CountingConn wraps a net.Conn to track bytes sent and received

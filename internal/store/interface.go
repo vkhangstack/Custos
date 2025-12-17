@@ -1,8 +1,9 @@
 package store
 
 import (
-	"Custos/internal/core"
 	"time"
+
+	"github.com/vkhangstack/Custos/internal/core"
 )
 
 // Store defines the interface for data persistence

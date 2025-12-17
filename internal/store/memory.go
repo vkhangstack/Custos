@@ -1,10 +1,11 @@
 package store
 
 import (
-	"Custos/internal/core"
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/vkhangstack/Custos/internal/core"
 )
 
 // MemoryStore holds logs and stats in memory

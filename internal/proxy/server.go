@@ -1,13 +1,14 @@
 package proxy
 
 import (
-	"Custos/internal/core"
-	"Custos/internal/store"
 	"context"
 	"fmt"
 	"log"
 	"net"
 	"time"
+
+	"github.com/vkhangstack/Custos/internal/core"
+	"github.com/vkhangstack/Custos/internal/store"
 
 	"github.com/armon/go-socks5"
 )

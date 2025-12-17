@@ -1,14 +1,19 @@
 package main
 
 import (
-	"Custos/internal/core"
-	"Custos/internal/dns"
-	"Custos/internal/proxy"
-	"Custos/internal/store"
-	"Custos/internal/system"
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/vkhangstack/Custos/internal/system"
+
+	"github.com/vkhangstack/Custos/internal/store"
+
+	"github.com/vkhangstack/Custos/internal/proxy"
+
+	"github.com/vkhangstack/Custos/internal/dns"
+
+	"github.com/vkhangstack/Custos/internal/core"
 )
 
 // App struct

@@ -1,4 +1,4 @@
-module Custos
+module github.com/vkhangstack/Custos
 
 go 1.24.0
 

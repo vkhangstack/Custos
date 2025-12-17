@@ -1,7 +1,6 @@
 package store
 
 import (
-	"Custos/internal/core"
 	"bufio"
 	"fmt"
 	"log"
@@ -9,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/vkhangstack/Custos/internal/core"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
