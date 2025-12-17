@@ -11,6 +11,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/linux"
+	"github.com/wailsapp/wails/v2/pkg/options/windows"
 	rt "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -44,10 +45,12 @@ func main() {
 	})
 	// Create application with options
 	err := wails.Run(&options.App{
-		Title:       "Custos",
-		Width:       1024,
-		Height:      768,
-		AlwaysOnTop: false,
+		Title:             "custos",
+		Width:             1024,
+		Height:            768,
+		AlwaysOnTop:       false,
+		HideWindowOnClose: true,
+		Windows:           &windows.Options{},
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
@@ -56,8 +59,9 @@ func main() {
 		OnShutdown:       app.shutdown,
 		Menu:             AppMenu,
 		Linux: &linux.Options{
-			Icon:        []byte("frontend/src/assets/images/logo-universal.png"),
-			ProgramName: "custos",
+			Icon:             []byte("frontend/src/assets/images/logo-universal.png"),
+			ProgramName:      "custos",
+			WebviewGpuPolicy: linux.WebviewGpuPolicyAlways,
 		},
 		LogLevel:           logger.DEBUG,
 		LogLevelProduction: logger.WARNING,
