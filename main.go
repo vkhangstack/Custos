@@ -46,6 +46,9 @@ func main() {
 	// FileMenu.AddText("Open", keys.CmdOrCtrl("o"), func(_ *menu.CallbackData) {
 	// 	// do something
 	// })
+	FileMenu.AddText("Reload", keys.CmdOrCtrl("r"), func(_ *menu.CallbackData) {
+		rt.WindowReloadApp(app.ctx)
+	})
 	FileMenu.AddSeparator()
 	FileMenu.AddText("Quit", keys.CmdOrCtrl("q"), func(_ *menu.CallbackData) {
 		// `rt` is an alias of "github.com/wailsapp/wails/v2/pkg/runtime" to prevent collision with standard package
@@ -65,6 +68,9 @@ func main() {
 			Buttons:       []string{"OK"},
 			DefaultButton: "OK",
 		})
+	})
+	AboutMenu.AddText("Open Source", keys.CmdOrCtrl("o"), func(_ *menu.CallbackData) {
+		rt.BrowserOpenURL(app.ctx, "https://github.com/vkhangstack/Custos")
 	})
 	// Create application with options
 	err = wails.Run(&options.App{
