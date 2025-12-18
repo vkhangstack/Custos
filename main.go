@@ -70,11 +70,11 @@ func main() {
 		})
 	})
 	AboutMenu.AddText("Open Source", keys.CmdOrCtrl("o"), func(_ *menu.CallbackData) {
-		rt.BrowserOpenURL(app.ctx, "https://github.com/vkhangstack/Custos")
+		// rt.BrowserOpenURL(app.ctx, "https://github.com/vkhangstack/Custos")
 	})
 	// Create application with options
 	err = wails.Run(&options.App{
-		Title:             strings.ToLower(app.GetAppInfo().Name),
+		Title:             strings.ToTitle(app.GetAppInfo().Name[:1]) + strings.ToLower(app.GetAppInfo().Name[1:]),
 		Width:             1024,
 		Height:            768,
 		AlwaysOnTop:       false,
@@ -88,7 +88,7 @@ func main() {
 		OnShutdown:       app.shutdown,
 		Menu:             AppMenu,
 		Linux: &linux.Options{
-			Icon:             []byte("frontend/src/assets/images/logo-universal.png"),
+			Icon:             []byte("build/appicon.png"),
 			ProgramName:      strings.ToLower(app.GetAppInfo().Name),
 			WebviewGpuPolicy: linux.WebviewGpuPolicyAlways,
 		},

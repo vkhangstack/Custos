@@ -12,7 +12,7 @@ export function EnableProtection(arg1:boolean):Promise<void>;
 
 export function GetAppInfo():Promise<main.AppInfo>;
 
-export function GetChartData():Promise<Array<core.TrafficDataPoint>>;
+export function GetChartData(arg1:string):Promise<Array<core.TrafficDataPoint>>;
 
 export function GetLogs():Promise<Array<core.LogEntry>>;
 

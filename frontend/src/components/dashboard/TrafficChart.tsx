@@ -1,18 +1,21 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Activity } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { formatBytes } from '../../utils/formatting';
 
 interface TrafficData {
     name: string;
+    timestamp: string; // ISO string from backend
     upload: number;
     download: number;
 }
 
 interface TrafficChartProps {
     data: TrafficData[];
+    timeRange: string;
 }
 
-const TrafficChart = ({ data }: TrafficChartProps) => {
+const TrafficChart = ({ data, timeRange }: TrafficChartProps) => {
     const { t } = useTranslation();
     return (
         <div className="lg:col-span-2 bg-card p-6 rounded-xl shadow-lg border border-border">
@@ -34,14 +37,32 @@ const TrafficChart = ({ data }: TrafficChartProps) => {
                             </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted-foreground)/0.2)" />
-                        <XAxis dataKey="name" hide />
-                        <YAxis stroke="hsl(var(--muted-foreground))" />
+                        <XAxis 
+                            dataKey="timestamp" 
+                            hide={false}
+                            stroke="hsl(var(--muted-foreground))"
+                            tickFormatter={(str) => {
+                                if (!str) return '';
+                                const date = new Date(str);
+                                return timeRange === '24h' 
+                                    ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) // Just time is cleaner, or include date if needed
+                                    : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            }}
+                            minTickGap={30}
+                        />
+                        <YAxis stroke="hsl(var(--muted-foreground))" tickFormatter={formatBytes} />
                         <Tooltip
+                            labelFormatter={(label) => {
+                                if (!label) return '';
+                                const date = new Date(label);
+                                return date.toLocaleString();
+                            }}
                             contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderColor: 'hsl(var(--border))', color: 'hsl(var(--popover-foreground))' }}
                             itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                            formatter={(value) => formatBytes(value as number)}
                         />
-                        <Area type="monotone" dataKey="download" stroke="#8884d8" fillOpacity={1} fill="url(#colorDownload)" name={`${t('dashboard.download')} (KB/s)`} />
-                        <Area type="monotone" dataKey="upload" stroke="#82ca9d" fillOpacity={1} fill="url(#colorUpload)" name={`${t('dashboard.upload')} (KB/s)`} />
+                        <Area type="monotone" dataKey="download" stroke="#8884d8" fillOpacity={1} fill="url(#colorDownload)" name={t('dashboard.download') as string} />
+                        <Area type="monotone" dataKey="upload" stroke="#82ca9d" fillOpacity={1} fill="url(#colorUpload)" name={t('dashboard.upload') as string} />
                     </AreaChart>
                 </ResponsiveContainer>
             </div>

@@ -160,9 +160,21 @@ func (a *App) GetProtectionStatus() bool {
 }
 
 // GetChartData returns historical traffic data for the chart
-func (a *App) GetChartData() []core.TrafficDataPoint {
-	// Get last 30 minutes of history
-	return a.store.GetTrafficHistory(30 * time.Minute)
+func (a *App) GetChartData(durationStr string) []core.TrafficDataPoint {
+	// Parse duration
+	var duration time.Duration
+	switch durationStr {
+	case "1h":
+		duration = 1 * time.Hour
+	case "3h":
+		duration = 3 * time.Hour
+	case "24h":
+		duration = 24 * time.Hour
+	default:
+		// Default to 1h if invalid or empty
+		duration = 1 * time.Hour
+	}
+	return a.store.GetTrafficHistory(duration)
 }
 
 // Rule Management

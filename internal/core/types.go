@@ -26,13 +26,15 @@ type Stats struct {
 	TotalDownload int64            `json:"total_download"`
 	ActiveConns   int              `json:"active_connections"`
 	TopDomains    map[string]int64 `json:"top_domains"`
+	Timestamp     time.Time        `json:"timestamp"`
 }
 
 // TrafficDataPoint represents a point in the traffic chart
 type TrafficDataPoint struct {
-	Name     string `json:"name"`     // Time label (e.g., "10:00")
-	Upload   int64  `json:"upload"`   // Bytes sent
-	Download int64  `json:"download"` // Bytes received
+	Name      string    `json:"name"`      // Time label (e.g., "10:00")
+	Timestamp time.Time `json:"timestamp"` // Raw timestamp for sorting/charts
+	Upload    int64     `json:"upload"`    // Bytes sent
+	Download  int64     `json:"download"`  // Bytes received
 }
 
 // RuleType defines blocking or allowing
@@ -62,6 +64,7 @@ type TrafficStatsModel struct {
 	ID            string `gorm:"primaryKey"`
 	TotalUpload   int64
 	TotalDownload int64
+	Timestamp     time.Time
 }
 
 // PaginatedRulesResponse wraps rules and total count

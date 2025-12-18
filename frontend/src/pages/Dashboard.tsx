@@ -6,6 +6,7 @@ import TrafficChart from '../components/dashboard/TrafficChart';
 import TopUsageList from '../components/dashboard/TopUsageList';
 import { GetStats, GetSystemConnections, GetChartData, EnableProtection, GetProtectionStatus } from '../../wailsjs/go/main/App';
 import { core, system } from '../../wailsjs/go/models';
+import { formatBytes } from '../utils/formatting';
 
 const generateMockChartData = () => {
     // Keep mock chart data for now as GetStats doesn't return historical data series yet
@@ -24,6 +25,7 @@ const generateMockChartData = () => {
 export default function Dashboard() {
     const { t } = useTranslation();
     const [chartData, setChartData] = useState<any[]>([]);
+    const [timeRange, setTimeRange] = useState<string>('1h');
 
     // Real State
     const [stats, setStats] = useState<core.Stats>(new core.Stats());
@@ -66,12 +68,21 @@ export default function Dashboard() {
                 if (uploadRate < 0) uploadRate = 0;
                 if (downloadRate < 0) downloadRate = 0;
 
-                const newData = [...prevData.slice(1)];
+                const newData = [...prevData];
+                // Only append if it's a new point logic, or simple append
+                // With 24h view, appending every 2s might look crowded if we don't aggregate.
+                // But for simplicity, we just append.
+                
                 newData.push({
                     name: timeLabel,
+                    timestamp: now.toISOString(),
                     upload: uploadRate,
                     download: downloadRate,
                 });
+
+                // Limit points based on range to avoid memory leak? 
+                // Or let chart handle it? 
+                // Let's cap at some reasonable number if needed, but GetChartData returns full history.
                 return newData;
             });
 
@@ -85,7 +96,7 @@ export default function Dashboard() {
     useEffect(() => {
         // Initial fetch with History
         const init = async () => {
-            const history = await GetChartData();
+            const history = await GetChartData(timeRange);
             if (history && history.length > 0) {
                 setChartData(history);
             } else {
@@ -106,7 +117,7 @@ export default function Dashboard() {
         }, 2000); // Poll every 2 seconds
 
         return () => clearInterval(interval);
-    }, []);
+    }, [timeRange]); // Re-run when timeRange changes
 
     const toggleProtection = async () => {
         if (isProtectionLoading || protectionEnabled === null) return;
@@ -123,13 +134,7 @@ export default function Dashboard() {
         }
     };
 
-    const formatBytes = (bytes: number) => {
-        if (!bytes || bytes === 0) return '0 B';
-        const k = 1024;
-        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    };
+
 
     const getRootDomain = (domain: string) => {
         if (!domain) return '-';
@@ -212,8 +217,27 @@ export default function Dashboard() {
 
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <TrafficChart data={chartData} />
-                <TopUsageList items={topUsageList} />
+                <div className="lg:col-span-2 space-y-4">
+                    <div className="flex justify-end space-x-2">
+                        {['1h', '3h', '24h'].map((range) => (
+                            <button
+                                key={range}
+                                onClick={() => setTimeRange(range)}
+                                className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                                    timeRange === range
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                                }`}
+                            >
+                                {range}
+                            </button>
+                        ))}
+                    </div>
+                    <TrafficChart data={chartData} timeRange={timeRange} />
+                </div>
+                <div className="lg:col-span-1">
+                     <TopUsageList items={topUsageList} />
+                </div>
             </div>
         </div>
     );

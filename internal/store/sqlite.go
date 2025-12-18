@@ -102,6 +102,7 @@ func (s *SQLiteStore) AddLog(entry core.LogEntry) {
 				Updates(map[string]interface{}{
 					"total_upload":   gorm.Expr("total_upload + ?", entry.BytesSent),
 					"total_download": gorm.Expr("total_download + ?", entry.BytesRecv),
+					"timestamp":      time.Now(),
 				}).Error; err != nil {
 				return err
 			}
@@ -153,6 +154,7 @@ func (s *SQLiteStore) AddTraffic(upload, download int64) {
 		Updates(map[string]interface{}{
 			"total_upload":   gorm.Expr("total_upload + ?", upload),
 			"total_download": gorm.Expr("total_download + ?", download),
+			"timestamp":      time.Now(),
 		}).Error; err != nil {
 		log.Printf("Failed to update traffic stats: %v", err)
 	}
@@ -205,6 +207,7 @@ func (s *SQLiteStore) GetStats() core.Stats {
 		}
 	}
 
+	stats.Timestamp = time.Now()
 	return stats
 }
 
@@ -215,13 +218,33 @@ func (s *SQLiteStore) GetTrafficHistory(duration time.Duration) []core.TrafficDa
 	// SQLite specific query to group by minute (or rough interval)
 	threshold := time.Now().Add(-duration)
 
-	// Group by %H:%M using Local Time
-	rows, err := s.db.Model(&core.LogEntry{}).
-		Select("strftime('%H:%M', timestamp, 'localtime') as name, sum(bytes_sent) as upload, sum(bytes_recv) as download").
-		Where("timestamp > ?", threshold).
-		Group("name").
-		Order("name ASC").
-		Rows()
+	// Determined Interval based on duration
+	// For < 3h, group by minute. For > 3h (e.g. 24h), group by hour maybe?
+	// For simplicity, let's keep grouping by minute for < 24h, or 5-min for 24h.
+	// Actually, for 24h charts, 1440 points is fine for Recharts, but maybe heavy.
+	// Let's stick to minute-grouping for < 4h, and hour-grouping for > 4h.
+	var format string
+	if duration.Hours() > 4 {
+		format = "%Y-%m-%d %H:00" // Group by Hour
+	} else {
+		format = "%Y-%m-%d %H:%M" // Group by Minute
+	}
+
+	// Group by using Local Time string for grouping, but we need parsed time for sorting/struct
+	// We select max(timestamp) or min(timestamp) in group to represent the bucket.
+	// strftime('%Y-%m-%d %H:%M', timestamp, 'localtime') -> 2023-12-18 10:05
+	query := fmt.Sprintf(`
+		SELECT 
+			strftime('%s', timestamp, 'localtime') as bucket_str, 
+			sum(bytes_sent) as upload, 
+			sum(bytes_recv) as download
+		FROM log_entries 
+		WHERE timestamp > ? 
+		GROUP BY bucket_str 
+		ORDER BY bucket_str ASC
+	`, format)
+
+	rows, err := s.db.Raw(query, threshold).Rows()
 
 	if err != nil {
 		log.Printf("Failed to get traffic history: %v", err)
@@ -231,7 +254,35 @@ func (s *SQLiteStore) GetTrafficHistory(duration time.Duration) []core.TrafficDa
 
 	for rows.Next() {
 		var p core.TrafficDataPoint
-		rows.Scan(&p.Name, &p.Upload, &p.Download)
+		var bucketStr string
+		rows.Scan(&bucketStr, &p.Upload, &p.Download)
+
+		// Parse back the time
+		// If using format, we get string.
+		// Actually, let's just use the formatted string for both name and parsing?
+		// Since we use localtime in query, we need to be careful with time.Parse assuming UTC or Local.
+		// NOTE: strftime('%Y-%m-%d %H:%M'...) returns string.
+		// Let's assume bucketStr is "YYYY-MM-DD HH:MM"
+
+		// Simplified approach: just parse it.
+		// For chart display name, we'll format in frontend or here.
+		// Let's send full timestamp object.
+
+		t, err := time.ParseInLocation("2006-01-02 15:04", bucketStr, time.Local)
+		if err != nil {
+			// Try hour format if that fails? Or just adjust query to be simpler.
+			// If we group by Hour, format is "%Y-%m-%d %H:00" which still fits "2006-01-02 15:04" pattern!
+			// So one parse layout works for both minute and hour if minutes are 00.
+		}
+
+		if err == nil {
+			p.Timestamp = t
+			p.Name = t.Format("15:04") // Default label, frontend can override
+		} else {
+			// Fallback
+			p.Name = bucketStr
+		}
+
 		points = append(points, p)
 	}
 

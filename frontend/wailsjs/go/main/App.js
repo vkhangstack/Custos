@@ -18,8 +18,8 @@ export function GetAppInfo() {
   return window['go']['main']['App']['GetAppInfo']();
 }
 
-export function GetChartData() {
-  return window['go']['main']['App']['GetChartData']();
+export function GetChartData(arg1) {
+  return window['go']['main']['App']['GetChartData'](arg1);
 }
 
 export function GetLogs() {
