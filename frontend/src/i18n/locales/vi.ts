@@ -110,6 +110,24 @@ export const vi = {
         network: {
             title: "Trạng thái mạng",
             content: "Kết nối mạng và thông số."
+        },
+        about: {
+            title: "Giới thiệu",
+            version: "Phiên bản",
+            description: "Công cụ giám sát và bảo vệ lưu lượng mạng toàn diện.",
+            author: "Tác giả",
+            contact: "Liên hệ",
+            madeWith: "Được làm bằng",
+            by: "bởi",
+            rights: "Bảo lưu mọi quyền."
+        },
+        openSource: {
+            title: "Mã nguồn mở",
+            repository: "Kho lưu trữ GitHub",
+            libraries: "Thư viện mã nguồn mở",
+            license: "Giấy phép",
+            viewWebsite: "Xem trang web",
+            footer: "Được thực hiện với ❤️ thông qua Agentic Coding"
         }
     }
 };

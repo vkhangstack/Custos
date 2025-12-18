@@ -110,6 +110,24 @@ export const en = {
         network: {
             title: "Network Status",
             content: "Network connections and metrics."
+        },
+        about: {
+            title: "About",
+            version: "Version",
+            description: "A comprehensive traffic monitoring and protection tool.",
+            author: "Author",
+            contact: "Contact",
+            madeWith: "Made with",
+            by: "by",
+            rights: "All rights reserved."
+        },
+        openSource: {
+            title: "Open Source",
+            repository: "GitHub Repository",
+            libraries: "Open Source Libraries",
+            license: "License",
+            viewWebsite: "View Website",
+            footer: "Made with ❤️ via Agentic Coding"
         }
     }
 };

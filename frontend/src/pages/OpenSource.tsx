@@ -4,8 +4,10 @@ import { BrowserOpenURL } from '../../wailsjs/runtime/runtime';
 import { GetAppInfo } from '../../wailsjs/go/main/App';
 import { useEffect, useState } from 'react';
 import { main } from '../../wailsjs/go/models';
+import { useTranslation } from 'react-i18next';
 
 export default function OpenSource() {
+    const { t } = useTranslation();
     const [appInfo, setAppInfo] = useState<main.AppInfo | null>(null);
 
     useEffect(() => {
@@ -35,7 +37,7 @@ export default function OpenSource() {
     return (
         <div className="p-6 bg-background min-h-screen text-foreground">
             <PageHeader
-                title="Open Source"
+                title={t('openSource.title') as string}
                 icon={Code}
                 iconColorClass="text-purple-500"
             />
@@ -55,7 +57,7 @@ export default function OpenSource() {
                             className="flex items-center gap-2 px-6 py-2.5 bg-foreground text-background rounded-full font-medium hover:opacity-90 transition-opacity"
                         >
                             <Github size={20} />
-                            GitHub Repository
+                            {t('openSource.repository')}
                         </button>
                     </div>
                 </div>
@@ -65,7 +67,7 @@ export default function OpenSource() {
                     <div className="p-6 border-b border-border bg-muted/30">
                         <h3 className="font-semibold text-lg flex items-center gap-2">
                             <Library size={20} className="text-blue-500" />
-                            Open Source Libraries
+                            {t('openSource.libraries')}
                         </h3>
                     </div>
                     <div className="divide-y divide-border">
@@ -74,13 +76,13 @@ export default function OpenSource() {
                                 <div>
                                     <h4 className="font-medium text-foreground">{lib.name}</h4>
                                     <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full mt-1 inline-block">
-                                        {lib.license} License
+                                        {lib.license} {t('openSource.license')}
                                     </span>
                                 </div>
                                 <button
                                     onClick={() => openUrl(lib.url)}
                                     className="p-2 text-muted-foreground hover:text-primary transition-colors"
-                                    title="View Website"
+                                    title={t('openSource.viewWebsite') as string}
                                 >
                                     <ExternalLink size={18} />
                                 </button>
@@ -90,7 +92,7 @@ export default function OpenSource() {
                 </div>
 
                 <div className="text-center text-sm text-muted-foreground pt-8 pb-4">
-                    Made with ❤️ by vkhangstack
+                    {t('openSource.footer') as string}
                 </div>
             </div>
         </div>

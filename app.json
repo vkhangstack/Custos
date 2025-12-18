@@ -4,5 +4,6 @@
     "icon": "",
     "description": "A privacy-focused web browser",
     "author": "vkhangstack",
+    "contact" : "https://phamvankhang.name.vn",
     "license": "MIT"
 }

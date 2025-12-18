@@ -9,6 +9,7 @@ const Rules = lazy(() => import('./pages/Rules'));
 const Reports = lazy(() => import('./pages/Reports'));
 const Settings = lazy(() => import('./pages/Settings'));
 const OpenSource = lazy(() => import('./pages/OpenSource'));
+const About = lazy(() => import('./pages/About'));
 import { EventsOn } from '../wailsjs/runtime/runtime';
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
@@ -35,6 +36,7 @@ function App() {
                 <Route path="reports" element={<Reports />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="opensource" element={<OpenSource />} />
+                <Route path="about" element={<About />} />
             </Route>
         </Routes>
     )

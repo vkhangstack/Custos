@@ -5,6 +5,8 @@ import { APP_CONFIG } from '../config';
 import { useTranslation } from 'react-i18next';
 import { GetAppInfo } from '../../wailsjs/go/main/App'
 
+import Logo from './common/Logo';
+
 const Sidebar = () => {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [config, setConfig] = useState(APP_CONFIG);
@@ -30,6 +32,7 @@ const Sidebar = () => {
             APP_CONFIG.appName = appInfo.name;
             APP_CONFIG.appVersion = appInfo.version;
             APP_CONFIG.appAuthor = appInfo.author;
+            APP_CONFIG.appContact = appInfo?.contact ?? "-";
             setConfig({ ...APP_CONFIG });
         };
         init();
@@ -39,13 +42,13 @@ const Sidebar = () => {
         <div className={`flex flex-col h-screen bg-card border-r border-border text-card-foreground shadow-xl transition-[width] duration-300 ease-in-out shrink-0 ${isCollapsed ? 'w-20' : 'w-64'}`}>
             {/* Header */}
             <div className={`h-16 flex items-center justify-between px-6 border-b border-border ${isCollapsed ? 'justify-center p-0' : ''}`}>
-                {!isCollapsed && <h2 className="text-xl font-semibold whitespace-nowrap overflow-hidden text-primary">{config.appName.split(' ')[0]}</h2>}
+                <Logo collapsed={isCollapsed} appInfo={config} />
                 <button
                     className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                     onClick={() => setIsCollapsed(!isCollapsed)}
                     title={isCollapsed ? t('sidebar.expand') as string : t('sidebar.collapse') as string}
                 >
-                    {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+                    {isCollapsed ? <ChevronRight size={20} fill="currentColor" /> : <ChevronLeft size={20} fill='currentColor' />}
                 </button>
             </div>
 
@@ -84,7 +87,7 @@ const Sidebar = () => {
                             <span className="font-semibold text-foreground">{config.appName}</span>
                             <span className="bg-accent px-1.5 py-0.5 rounded text-xs text-accent-foreground">{config.appVersion}</span>
                         </div>
-                        <div className="text-xs">{t('sidebar.author')}: {config.appAuthor}</div>
+                        {/* <div className="text-xs">{t('sidebar.author')}: {config.appAuthor}</div> */}
                     </>
                 ) : (
                     <div className="text-xs">

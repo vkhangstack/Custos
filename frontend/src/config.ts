@@ -3,4 +3,5 @@ export const APP_CONFIG = {
     appVersion: "",
     appShortVersion: "",
     appAuthor: "",
+    appContact: "",
 };
