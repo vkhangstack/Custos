@@ -153,18 +153,23 @@ export default function Dashboard() {
                 <button
                     onClick={toggleProtection}
                     disabled={isProtectionLoading || protectionEnabled === null}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 active:scale-95 hover:scale-105 ${
                         protectionEnabled === null
                             ? 'bg-muted text-muted-foreground border border-muted-foreground/20'
                             : protectionEnabled
-                            ? 'bg-green-500/20 text-green-500 border border-green-500/50 hover:bg-green-500/30'
+                            ? 'bg-green-500/20 text-green-500 border border-green-500/50 hover:bg-green-500/30 animate-cyber-pulse'
                             : 'bg-red-500/20 text-red-500 border border-red-500/50 hover:bg-red-500/30'
                     } ${isProtectionLoading || protectionEnabled === null ? 'opacity-50 cursor-not-allowed' : ''} min-w-[180px] justify-center`}
                 >
                     {isProtectionLoading || protectionEnabled === null ? (
                         <Loader2 size={20} className="animate-spin" />
                     ) : (
-                        protectionEnabled ? <Shield size={20} /> : <ShieldAlert size={20} />
+                        protectionEnabled ? (
+                            <div className="relative">
+                                <Shield size={20} />
+                                <span className="absolute inset-0 rounded-full bg-green-500 animate-ping opacity-20 pointer-events-none"></span>
+                            </div>
+                        ) : <ShieldAlert size={20} />
                     )}
                     {protectionEnabled === null
                         ? t('Loading...')

@@ -21,7 +21,22 @@ function App() {
         const unsubscribe = EventsOn("navigate-to", (path: string) => {
             navigate(path);
         });
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Disable Ctrl+A or Cmd+A (Select All)
+            if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+                const target = e.target as HTMLElement;
+                // Allow select all in inputs or textareas
+                if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA' && !target.isContentEditable) {
+                    e.preventDefault();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+
         return () => {
+            window.removeEventListener('keydown', handleKeyDown);
             // Unsubscribe if runtime supports it, otherwise it's fine for singleton app
         };
     }, [navigate]);

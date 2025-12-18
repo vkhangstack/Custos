@@ -24,7 +24,6 @@ export default function Traffic() {
                 GetStats(),
                 GetSystemConnections()
             ]);
-        console.log("Refreshing data...", fetchedLogs);
 
             setLogs(fetchedLogs || []);
             setStats(fetchedStats || new core.Stats());
@@ -106,7 +105,7 @@ export default function Traffic() {
                     placeholder={t('traffic.searchPlaceholder') as string}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 pr-4 py-2 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground w-64"
+                    className="max-w-32 pl-9 pr-4 py-2 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground w-64"
                 />
             </div>
             <button
