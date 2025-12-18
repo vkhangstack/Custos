@@ -13,6 +13,7 @@ type Store interface {
 	AddTraffic(upload, download int64)
 	GetTrafficHistory(duration time.Duration) []core.TrafficDataPoint
 	GetRecentLogs(limit int) []core.LogEntry
+	GetLogsPaginated(cursor string, limit int, search, status, logType string) ([]core.LogEntry, string, bool, int64, error)
 	GetStats() core.Stats
 	Subscribe(callback func(core.LogEntry))
 	ResetData()

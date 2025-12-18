@@ -153,6 +153,20 @@ func (a *App) GetLogs() []core.LogEntry {
 	return a.store.GetRecentLogs(50)
 }
 
+// GetLogsPaginated returns paginated logs for the frontend
+func (a *App) GetLogsPaginated(cursor string, limit int, search, status, logType string) core.PaginatedLogs {
+	logs, nextCursor, hasMore, total, err := a.store.GetLogsPaginated(cursor, limit, search, status, logType)
+	if err != nil {
+		return core.PaginatedLogs{Logs: []core.LogEntry{}, Total: 0}
+	}
+	return core.PaginatedLogs{
+		Logs:       logs,
+		NextCursor: nextCursor,
+		HasMore:    hasMore,
+		Total:      total,
+	}
+}
+
 // GetStats returns current stats
 func (a *App) GetStats() core.Stats {
 	return a.store.GetStats()

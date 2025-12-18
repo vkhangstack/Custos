@@ -166,8 +166,53 @@ func (s *SQLiteStore) AddTraffic(upload, download int64) {
 // GetRecentLogs returns the last N logs
 func (s *SQLiteStore) GetRecentLogs(limit int) []core.LogEntry {
 	var logs []core.LogEntry
-	s.db.Order("id asc").Limit(limit).Find(&logs)
+	s.db.Order("id desc").Limit(limit).Find(&logs)
 	return logs
+}
+
+func (s *SQLiteStore) GetLogsPaginated(cursor string, limit int, search, status, logType string) ([]core.LogEntry, string, bool, int64, error) {
+	var logs []core.LogEntry
+	var total int64
+
+	query := s.db.Model(&core.LogEntry{})
+
+	if search != "" {
+		likePattern := "%" + search + "%"
+		query = query.Where("(domain LIKE ? OR process_name LIKE ? OR dst_ip LIKE ?)", likePattern, likePattern, likePattern)
+	}
+
+	if status != "" && status != "all" {
+		query = query.Where("status = ?", status)
+	}
+
+	if logType != "" && logType != "all" {
+		query = query.Where("type = ?", logType)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, "", false, 0, err
+	}
+
+	if cursor != "" {
+		query = query.Where("id < ?", cursor)
+	}
+
+	if err := query.Order("id desc").Limit(limit + 1).Find(&logs).Error; err != nil {
+		return nil, "", false, 0, err
+	}
+
+	hasMore := false
+	nextCursor := ""
+	if len(logs) > limit {
+		hasMore = true
+		logs = logs[:limit]
+	}
+
+	if len(logs) > 0 {
+		nextCursor = logs[len(logs)-1].ID
+	}
+
+	return logs, nextCursor, hasMore, total, nil
 }
 
 // GetStats calculates stats from DB

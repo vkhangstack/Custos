@@ -28,6 +28,8 @@ export function GetChartData(arg1:string):Promise<Array<core.TrafficDataPoint>>;
 
 export function GetLogs():Promise<Array<core.LogEntry>>;
 
+export function GetLogsPaginated(arg1:string,arg2:number,arg3:string,arg4:string,arg5:string):Promise<core.PaginatedLogs>;
+
 export function GetProtectionStatus():Promise<boolean>;
 
 export function GetRules():Promise<Array<core.Rule>>;

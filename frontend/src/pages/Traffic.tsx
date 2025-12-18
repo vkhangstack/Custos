@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Activity, ArrowDown, ArrowUp, Filter, Search, RefreshCw, XCircle, CheckCircle } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Activity, ArrowDown, ArrowUp, Search, RefreshCw, XCircle, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { GetLogs, GetStats, GetSystemConnections } from '../../wailsjs/go/main/App';
+import { GetLogsPaginated, GetStats, GetSystemConnections } from '../../wailsjs/go/main/App';
 import { core, system } from '../../wailsjs/go/models';
 import PageHeader from '../components/common/PageHeader';
 import Select from '../components/common/Select';
@@ -17,21 +17,33 @@ export default function Traffic() {
     const [typeFilter, setTypeFilter] = useState('all');
     const [isRefreshing, setIsRefreshing] = useState(false);
 
-    const fetchData = async () => {
+    // Pagination state (Cursor-based)
+    const [cursorHistory, setCursorHistory] = useState<string[]>(['']); // Stack of cursors for each page
+    const [pageSize] = useState(20);
+    const [totalLogs, setTotalLogs] = useState(0);
+    const [nextCursor, setNextCursor] = useState('');
+    const [hasMore, setHasMore] = useState(false);
+
+    const currentCursor = cursorHistory[cursorHistory.length - 1];
+
+    const fetchData = useCallback(async () => {
         try {
-            const [fetchedLogs, fetchedStats, fetchedConns] = await Promise.all([
-                GetLogs(),
+            const [paginatedLogs, fetchedStats, fetchedConns] = await Promise.all([
+                GetLogsPaginated(currentCursor, pageSize, searchQuery, statusFilter, typeFilter),
                 GetStats(),
                 GetSystemConnections()
             ]);
 
-            setLogs(fetchedLogs || []);
+            setLogs(paginatedLogs.logs || []);
+            setTotalLogs(paginatedLogs.total || 0);
+            setNextCursor(paginatedLogs.next_cursor || '');
+            setHasMore(paginatedLogs.has_more || false);
             setStats(fetchedStats || new core.Stats());
             setConnections(fetchedConns || []);
         } catch (error) {
             console.error("Failed to fetch traffic data:", error);
         }
-    };
+    }, [currentCursor, pageSize, searchQuery, statusFilter, typeFilter]);
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
@@ -44,7 +56,23 @@ export default function Traffic() {
         // Poll every 2 seconds for fresh data
         const interval = setInterval(fetchData, 2000);
         return () => clearInterval(interval);
-    }, []);
+    }, [fetchData]);
+
+    const handleNextPage = () => {
+        if (hasMore && nextCursor) {
+            setCursorHistory(prev => [...prev, nextCursor]);
+        }
+    };
+
+    const handlePrevPage = () => {
+        if (cursorHistory.length > 1) {
+            setCursorHistory(prev => prev.slice(0, prev.length - 1));
+        }
+    };
+
+    const handleFilterChange = () => {
+        setCursorHistory(['']); // Reset to first page
+    };
 
     const formatBytes = (bytes: number) => {
         if (bytes === 0) return '0 B';
@@ -62,15 +90,7 @@ export default function Traffic() {
         }
     };
 
-    const filteredLogs = logs.filter(log => {
-        const matchesSearch = log.domain?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            log.process_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            log.dst_ip?.includes(searchQuery);
-        const matchesStatus = statusFilter === 'all' || log.status === statusFilter;
-        const matchesType = typeFilter === 'all' || log.type === typeFilter;
-        return matchesSearch && matchesStatus && matchesType;
-    });
-
+    // Connections are still client-side filtered as they come in a small list from system info
     const filteredConnections = connections.filter(conn =>
         conn.process_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         conn.remote_addr?.includes(searchQuery)
@@ -80,7 +100,7 @@ export default function Traffic() {
         <div className="flex gap-2 items-center">
             <Select
                 value={statusFilter}
-                onChange={setStatusFilter}
+                onChange={(val) => { setStatusFilter(val); handleFilterChange(); }}
                 options={[
                     { label: 'All Status', value: 'all' },
                     { label: 'Allowed', value: 'allowed' },
@@ -90,7 +110,7 @@ export default function Traffic() {
             />
             <Select
                 value={typeFilter}
-                onChange={setTypeFilter}
+                onChange={(val) => { setTypeFilter(val); handleFilterChange(); }}
                 options={[
                     { label: 'All Types', value: 'all' },
                     { label: 'DNS', value: 'dns' },
@@ -104,7 +124,7 @@ export default function Traffic() {
                     type="text"
                     placeholder={t('traffic.searchPlaceholder') as string}
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => { setSearchQuery(e.target.value); handleFilterChange(); }}
                     className="max-w-32 pl-9 pr-4 py-2 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground w-64"
                 />
             </div>
@@ -175,7 +195,7 @@ export default function Traffic() {
             </div>
 
             {/* Content Table */}
-            <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+            <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden mb-6">
                 <div className="overflow-x-auto">
                     <table className={`w-full text-left text-sm`}>
                         <thead className="bg-muted/50 border-b border-border">
@@ -204,8 +224,8 @@ export default function Traffic() {
                         </thead>
                         <tbody className="divide-y divide-border">
                             {activeTab === 'logs' ? (
-                                filteredLogs.length > 0 ? (
-                                    filteredLogs.slice().reverse().map((log) => (
+                                logs.length > 0 ? (
+                                    logs.map((log) => (
                                         <tr key={log.id} className="hover:bg-muted/30 transition-colors">
                                             <td className="p-4 text-muted-foreground whitespace-nowrap">
                                                 {new Date(log.timestamp).toLocaleTimeString()}
@@ -269,6 +289,39 @@ export default function Traffic() {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Pagination Controls */}
+                {activeTab === 'logs' && (logs.length > 0 || cursorHistory.length > 1) && (
+                    <div className="p-4 bg-muted/30 border-t border-border flex items-center justify-between">
+                        <div className="text-sm text-muted-foreground">
+                            {totalLogs > 0 ? (
+                                <>
+                                    Total: <span className="font-medium text-foreground">{totalLogs}</span> entries
+                                </>
+                            ) : (
+                                "No more entries"
+                            )}
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={handlePrevPage}
+                                disabled={cursorHistory.length === 1}
+                                className="px-4 py-2 bg-card border border-border rounded-lg text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 text-sm font-medium"
+                            >
+                                <ChevronLeft size={18} />
+                                Previous
+                            </button>
+                            <button
+                                onClick={handleNextPage}
+                                disabled={!hasMore}
+                                className="px-4 py-2 bg-card border border-border rounded-lg text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 text-sm font-medium"
+                            >
+                                Next
+                                <ChevronRight size={18} />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

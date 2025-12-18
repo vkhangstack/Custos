@@ -50,6 +50,10 @@ export function GetLogs() {
   return window['go']['main']['App']['GetLogs']();
 }
 
+export function GetLogsPaginated(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['GetLogsPaginated'](arg1, arg2, arg3, arg4, arg5);
+}
+
 export function GetProtectionStatus() {
   return window['go']['main']['App']['GetProtectionStatus']();
 }

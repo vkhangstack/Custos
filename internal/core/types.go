@@ -104,6 +104,14 @@ type PaginatedRulesResponse struct {
 	Total int64  `json:"total"`
 }
 
+// PaginatedLogs wraps logs and total count
+type PaginatedLogs struct {
+	Logs       []LogEntry `json:"logs"`
+	NextCursor string     `json:"next_cursor"`
+	HasMore    bool       `json:"has_more"`
+	Total      int64      `json:"total"`
+}
+
 // AppSetting represents a key-value setting
 type AppSetting struct {
 	Key   string `gorm:"primaryKey" json:"key"`

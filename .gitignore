@@ -6,3 +6,5 @@ Custos*.deb
 custos.db
 
 target
+.custos/
+Custos*
