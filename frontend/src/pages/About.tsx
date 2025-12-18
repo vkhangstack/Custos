@@ -4,6 +4,7 @@ import { GetAppInfo } from '../../wailsjs/go/main/App';
 import { useEffect, useState } from 'react';
 import { main } from '../../wailsjs/go/models';
 import { useTranslation } from 'react-i18next';
+import Logo from '../components/common/Logo';
 
 export default function About() {
     const { t } = useTranslation();
@@ -30,12 +31,11 @@ export default function About() {
                     {/* Decorative Background Blur */}
                     <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-primary/10 to-transparent pointer-events-none" />
 
-                    <div className="relative z-10 flex flex-col items-center">
-                        <div className="w-24 h-24 bg-background border-4 border-primary/20 rounded-3xl flex items-center justify-center mb-6 shadow-xl">
-                            <Shield size={48} className="text-primary" />
+                    <div className="relative z-10 flex flex-col items-center gap-2">
+                        <div className='pb-6'>
+                            <Logo appInfo={appInfo as main.AppInfo} />
                         </div>
 
-                        <h1 className="text-3xl font-bold mb-2">{appInfo?.name || 'Custos'}</h1>
                         <div className="px-3 py-1 bg-secondary text-secondary-foreground rounded-full text-sm font-mono mb-6">
                             {t('about.version')} {appInfo?.version || '0.0.0'}
                         </div>

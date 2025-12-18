@@ -1,11 +1,11 @@
 import React from 'react';
 import logo from '../../../../build/appicon.png';
-import { APP_CONFIG } from '../../config';
+import { main } from '../../../wailsjs/go/models';
 
 interface LogoProps {
     collapsed?: boolean;
     className?: string;
-    appInfo: typeof APP_CONFIG
+    appInfo?: main.AppInfo
 }
 
 const Logo: React.FC<LogoProps> = ({ collapsed = false, className = '', appInfo }) => {
@@ -20,7 +20,7 @@ const Logo: React.FC<LogoProps> = ({ collapsed = false, className = '', appInfo 
             </div>
             {!collapsed && (
                 <span className="text-xl font-bold tracking-tight text-foreground whitespace-nowrap overflow-hidden transition-all duration-300">
-                    <span className="text-primary">{appInfo.appName}</span>
+                    <span className="text-primary">{appInfo?.name}</span>
                 </span>
             )}
         </div>

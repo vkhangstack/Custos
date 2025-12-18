@@ -1,15 +1,15 @@
 import { Home, FileText, Settings, Network as NetworkIcon, ChevronLeft, ChevronRight, Globe } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { APP_CONFIG } from '../config';
 import { useTranslation } from 'react-i18next';
-import { GetAppInfo } from '../../wailsjs/go/main/App'
+import { GetAppInfo } from '../../wailsjs/go/main/App';
 
 import Logo from './common/Logo';
+import { main } from '../../wailsjs/go/models';
 
 const Sidebar = () => {
     const [isCollapsed, setIsCollapsed] = useState(false);
-    const [config, setConfig] = useState(APP_CONFIG);
+    const [config, setConfig] = useState<main.AppInfo>();
     const { t, i18n } = useTranslation();
 
     const toggleLanguage = () => {
@@ -29,11 +29,7 @@ const Sidebar = () => {
     useEffect(() => {
         const init = async () => {
             const appInfo = await GetAppInfo();
-            APP_CONFIG.appName = appInfo.name;
-            APP_CONFIG.appVersion = appInfo.version;
-            APP_CONFIG.appAuthor = appInfo.author;
-            APP_CONFIG.appContact = appInfo?.contact ?? "-";
-            setConfig({ ...APP_CONFIG });
+            setConfig(appInfo);
         };
         init();
     }, []);
@@ -84,14 +80,14 @@ const Sidebar = () => {
                 {!isCollapsed ? (
                     <>
                         <div className="flex justify-between items-center mb-1">
-                            <span className="font-semibold text-foreground">{config.appName}</span>
-                            <span className="bg-accent px-1.5 py-0.5 rounded text-xs text-accent-foreground">{config.appVersion}</span>
+                            <span className="font-semibold text-foreground">{config?.name}</span>
+                            <span className="bg-accent px-1.5 py-0.5 rounded text-xs text-accent-foreground">{config?.version}</span>
                         </div>
                         {/* <div className="text-xs">{t('sidebar.author')}: {config.appAuthor}</div> */}
                     </>
                 ) : (
                     <div className="text-xs">
-                        <span className="block mb-1">{config.appVersion}</span>
+                        <span className="block mb-1">{config?.version}</span>
                     </div>
                 )}
             </div>
