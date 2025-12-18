@@ -42,6 +42,26 @@ func main() {
 		return
 	}
 
+	// Single Instance Lock
+	lockFile := filepath.Join(homeDir, ".custos", "app.lock")
+	if _, err := os.Stat(lockFile); err == nil {
+		// On Windows, if the app is running, removing will fail or be locked.
+		// We try to remove it; if it fails, another instance is likely using it.
+		err = os.Remove(lockFile)
+		if err != nil {
+			println("Another instance of Custos is already running.")
+			return
+		}
+	}
+	// Create the lock file
+	f, err := os.Create(lockFile)
+	if err != nil {
+		println("Error creating lock file:", err.Error())
+		return
+	}
+	f.Close()
+	defer os.Remove(lockFile)
+
 	// Create an instance of the app structure
 	app := NewApp()
 
@@ -95,8 +115,11 @@ func main() {
 			app.startup(ctx)
 			go setupTray(app)
 		},
-		OnShutdown: app.shutdown,
-		Menu:       AppMenu,
+		OnShutdown: func(ctx context.Context) {
+			app.shutdown(ctx)
+			systray.Quit()
+		},
+		Menu: AppMenu,
 		Linux: &linux.Options{
 			Icon:             iconData,
 			ProgramName:      strings.ToLower(app.GetAppInfo().Name),
