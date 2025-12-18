@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { ToggleLeft, ToggleRight, Save, Settings as SettingsIcon, Shield, Sliders, Moon } from 'lucide-react';
+import { ToggleLeft, ToggleRight, Save, Settings as SettingsIcon, Shield, Sliders } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import PageHeader from '../components/common/PageHeader';
 import Select from '../components/common/Select';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
-import { GetStartupStatus, SetRunOnStartup, GetAppSettings, SaveAppSettings } from '../../wailsjs/go/main/App';
+import { SetRunOnStartup, GetAppSettings, SaveAppSettings } from '../../wailsjs/go/main/App';
 
 export default function Settings() {
     const { t, i18n } = useTranslation();
@@ -63,8 +63,6 @@ export default function Settings() {
                 notifications: notifications,
                 auto_start: autoStart
             });
-            // Optional: Show success
-            console.log("Settings saved");
             showToast(t('settings.save') + ' Success', 'success');
         } catch (error) {
             console.error("Failed to save settings:", error);
@@ -107,7 +105,7 @@ export default function Settings() {
                         </div>
                         <div className="flex items-center justify-between">
                             <span className="text-muted-foreground font-medium">{t('settings.general.notifications')}</span>
-                            <button onClick={() => setNotifications(!notifications)} className="text-primary hover:text-primary/80 transition-colors">
+                            <button disabled={true} onClick={() => setNotifications(!notifications)} className="text-primary hover:text-primary/80 transition-colors">
                                 {notifications ? <ToggleRight size={32} /> : <ToggleLeft size={32} className="text-muted-foreground" />}
                             </button>
                         </div>
@@ -140,11 +138,13 @@ export default function Settings() {
                             <input
                                 type="number"
                                 value={port}
+                                disabled={true}
                                 onChange={(e) => setPort(parseInt(e.target.value))}
                                 className="bg-input border border-border text-foreground text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5 font-mono"
                             />
                         </div>
                         <Select
+                            disabled={true}
                             label={t('settings.network.protocol') as string}
                             value="socks5"
                             onChange={() => { }} // Placeholder for actual logic if needed

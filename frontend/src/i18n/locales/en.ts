@@ -29,7 +29,7 @@ export const en = {
             download: "Download",
             upload: "Upload",
             enableProtection: "Enable Protection",
-            disableProtection: "Disable Protection"
+            disableProtection: "Disable Protection",
         },
         traffic: {
             title: "Traffic Monitoring",

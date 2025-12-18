@@ -4,9 +4,10 @@ import { useTranslation } from 'react-i18next';
 import StatCard from '../components/dashboard/StatCard';
 import TrafficChart from '../components/dashboard/TrafficChart';
 import TopUsageList from '../components/dashboard/TopUsageList';
-import { GetStats, GetSystemConnections, GetChartData, EnableProtection, GetProtectionStatus } from '../../wailsjs/go/main/App';
+import { GetStats, GetSystemConnections, GetChartData, EnableProtection, GetProtectionStatus, GetStartupStatus } from '../../wailsjs/go/main/App';
 import { core, system } from '../../wailsjs/go/models';
 import { formatBytes } from '../utils/formatting';
+import { useToast } from '../context/ToastContext';
 
 const generateMockChartData = () => {
     // Keep mock chart data for now as GetStats doesn't return historical data series yet
@@ -26,6 +27,7 @@ export default function Dashboard() {
     const { t } = useTranslation();
     const [chartData, setChartData] = useState<any[]>([]);
     const [timeRange, setTimeRange] = useState<string>('1h');
+    const { showToast } = useToast();
 
     // Real State
     const [stats, setStats] = useState<core.Stats>(new core.Stats());
@@ -131,6 +133,7 @@ export default function Dashboard() {
             console.error("Failed to toggle protection:", error);
         } finally {
             setIsProtectionLoading(false);
+            showToast((!protectionEnabled ? t('dashboard.enableProtection') : t('dashboard.disableProtection')), 'success');
         }
     };
 
