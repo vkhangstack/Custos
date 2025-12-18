@@ -70,7 +70,7 @@ func main() {
 		})
 	})
 	AboutMenu.AddText("Open Source", keys.CmdOrCtrl("o"), func(_ *menu.CallbackData) {
-		// rt.BrowserOpenURL(app.ctx, "https://github.com/vkhangstack/Custos")
+		rt.EventsEmit(app.ctx, "navigate-to", "/opensource")
 	})
 	AboutMenu.AddText("Reset Data", keys.Combo("c", keys.CmdOrCtrlKey, keys.ShiftKey), func(_ *menu.CallbackData) {
 		app.store.ResetStats()
