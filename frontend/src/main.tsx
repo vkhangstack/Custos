@@ -5,6 +5,7 @@ import './style.css'
 import App from './App'
 import './i18n/config'; // Initialize i18n
 import { ThemeProvider } from './context/ThemeContext'
+import { ToastProvider } from './context/ToastContext'
 
 const container = document.getElementById('root')
 
@@ -14,7 +15,9 @@ root.render(
     <React.StrictMode>
         <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
             <HashRouter>
-                <App />
+                <ToastProvider>
+                    <App />
+                </ToastProvider>
             </HashRouter>
         </ThemeProvider>
     </React.StrictMode>

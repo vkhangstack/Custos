@@ -18,6 +18,10 @@ export function GetAppInfo() {
   return window['go']['main']['App']['GetAppInfo']();
 }
 
+export function GetAppSettings() {
+  return window['go']['main']['App']['GetAppSettings']();
+}
+
 export function GetChartData(arg1) {
   return window['go']['main']['App']['GetChartData'](arg1);
 }
@@ -52,6 +56,10 @@ export function GetSystemConnections() {
 
 export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
+}
+
+export function SaveAppSettings(arg1) {
+  return window['go']['main']['App']['SaveAppSettings'](arg1);
 }
 
 export function SetRunOnStartup(arg1) {

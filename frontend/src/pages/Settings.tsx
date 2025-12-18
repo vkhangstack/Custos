@@ -4,11 +4,14 @@ import { useTranslation } from 'react-i18next';
 import PageHeader from '../components/common/PageHeader';
 import Select from '../components/common/Select';
 import { useTheme } from '../context/ThemeContext';
+import { useToast } from '../context/ToastContext';
+import { GetStartupStatus, SetRunOnStartup, GetAppSettings, SaveAppSettings } from '../../wailsjs/go/main/App';
 
 export default function Settings() {
     const { t, i18n } = useTranslation();
     const { theme, setTheme } = useTheme();
-    const [autoStart, setAutoStart] = useState(true);
+    const { showToast } = useToast();
+    const [autoStart, setAutoStart] = useState(false);
     const [notifications, setNotifications] = useState(false);
     const [port, setPort] = useState(1080);
     const [language, setLanguage] = useState(i18n.language);
@@ -18,10 +21,33 @@ export default function Settings() {
         setLanguage(i18n.language);
     }, [i18n.language]);
 
-    const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const lang = e.target.value;
-        setLanguage(lang);
-        i18n.changeLanguage(lang);
+    // Initialize Settings
+    useEffect(() => {
+        GetAppSettings().then(settings => {
+            setPort(settings.port);
+            setNotifications(settings.notifications);
+            setAutoStart(settings.auto_start);
+        });
+    }, []);
+
+    const handleAutoStartToggle = async () => {
+        const newState = !autoStart;
+        try {
+            await SetRunOnStartup(newState);
+            setAutoStart(newState);
+            showToast(
+                t('settings.general.autoStart') + (newState ? ' Enabled' : ' Disabled'),
+                'success'
+            );
+        } catch (error) {
+            console.error("Failed to toggle auto-start:", error);
+            showToast("Failed to toggle auto-start", 'error');
+        }
+    };
+
+    const handleLanguageChange = (val: string) => {
+        setLanguage(val);
+        i18n.changeLanguage(val);
     };
 
     const toggleTheme = () => {
@@ -30,8 +56,27 @@ export default function Settings() {
 
     const isDark = theme === 'dark';
 
+    const handleSave = async () => {
+        try {
+            await SaveAppSettings({
+                port: port,
+                notifications: notifications,
+                auto_start: autoStart
+            });
+            // Optional: Show success
+            console.log("Settings saved");
+            showToast(t('settings.save') + ' Success', 'success');
+        } catch (error) {
+            console.error("Failed to save settings:", error);
+            showToast("Failed to save settings", 'error');
+        }
+    };
+
     const actions = (
-        <button className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg transition-colors font-medium shadow-lg shadow-primary/20">
+        <button 
+            onClick={handleSave}
+            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg transition-colors font-medium shadow-lg shadow-primary/20"
+        >
             <Save size={18} />
             {t('settings.save')}
         </button>
@@ -43,7 +88,7 @@ export default function Settings() {
                 title={t('settings.title')}
                 icon={SettingsIcon}
                 iconColorClass="text-muted-foreground"
-                actions={actions}
+                actions={null}
             />
 
             <div className="space-y-6 max-w-4xl mx-auto">
@@ -56,7 +101,7 @@ export default function Settings() {
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <span className="text-muted-foreground font-medium">{t('settings.general.autoStart')}</span>
-                            <button onClick={() => setAutoStart(!autoStart)} className="text-primary hover:text-primary/80 transition-colors">
+                            <button onClick={handleAutoStartToggle} className="text-primary hover:text-primary/80 transition-colors">
                                 {autoStart ? <ToggleRight size={32} /> : <ToggleLeft size={32} className="text-muted-foreground" />}
                             </button>
                         </div>
@@ -71,8 +116,7 @@ export default function Settings() {
                             <Select
                                 value={language}
                                 onChange={(val) => {
-                                    setLanguage(val);
-                                    i18n.changeLanguage(val);
+                                    handleLanguageChange(val);
                                 }}
                                 options={[
                                     { label: 'English', value: 'en' },

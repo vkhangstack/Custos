@@ -12,6 +12,8 @@ export function EnableProtection(arg1:boolean):Promise<void>;
 
 export function GetAppInfo():Promise<main.AppInfo>;
 
+export function GetAppSettings():Promise<main.AppSettings>;
+
 export function GetChartData(arg1:string):Promise<Array<core.TrafficDataPoint>>;
 
 export function GetLogs():Promise<Array<core.LogEntry>>;
@@ -29,6 +31,8 @@ export function GetStats():Promise<core.Stats>;
 export function GetSystemConnections():Promise<Array<system.ConnectionInfo>>;
 
 export function Greet(arg1:string):Promise<string>;
+
+export function SaveAppSettings(arg1:main.AppSettings):Promise<void>;
 
 export function SetRunOnStartup(arg1:boolean):Promise<void>;
 

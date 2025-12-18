@@ -211,6 +211,22 @@ export namespace main {
 	        this.contact = source["contact"];
 	    }
 	}
+	export class AppSettings {
+	    port: number;
+	    notifications: boolean;
+	    auto_start: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new AppSettings(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.port = source["port"];
+	        this.notifications = source["notifications"];
+	        this.auto_start = source["auto_start"];
+	    }
+	}
 
 }
 

@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/vkhangstack/Custos/internal/system"
@@ -59,9 +60,17 @@ func NewApp() *App {
 
 	systemTracker := system.NewTracker()
 
+	// Load configured port
+	port := 1080
+	if val, err := s.GetSetting("proxy_port"); err == nil && val != "" {
+		if p, err := strconv.Atoi(val); err == nil {
+			port = p
+		}
+	}
+
 	return &App{
 		store:         s,
-		proxyServer:   proxy.NewServer(s, bm, systemTracker, 1080),
+		proxyServer:   proxy.NewServer(s, bm, systemTracker, port),
 		dnsServer:     dns.NewServer(s, bm, 5353),
 		systemTracker: systemTracker,
 	}
@@ -136,7 +145,7 @@ func (a *App) Greet(name string) string {
 
 // SetSystemProxy enables or disables the system proxy
 func (a *App) SetSystemProxy(enabled bool) error {
-	return system.SetSystemProxy(enabled, 1080)
+	return system.SetSystemProxy(enabled, a.proxyServer.GetPort())
 }
 
 // EnableProtection toggles HTTP blocking
@@ -262,4 +271,67 @@ func (a *App) GetAppInfo() *AppInfo {
 		log.Fatal(err)
 	}
 	return &appInfo
+}
+
+// AppSettings defines configurable settings
+type AppSettings struct {
+	Port          int  `json:"port"`
+	Notifications bool `json:"notifications"`
+	AutoStart     bool `json:"auto_start"`
+}
+
+// GetAppSettings returns current settings
+func (a *App) GetAppSettings() AppSettings {
+	// Port
+	port := a.proxyServer.GetPort()
+
+	// Notifications (TODO: Implement actual notification logic storage if specific)
+	// For now assume stored in "notifications_enabled"
+	notifications := false
+	if val, err := a.store.GetSetting("notifications_enabled"); err == nil && val == "true" {
+		notifications = true
+	}
+
+	// AutoStart
+	autoStart := a.GetStartupStatus()
+
+	return AppSettings{
+		Port:          port,
+		Notifications: notifications,
+		AutoStart:     autoStart,
+	}
+}
+
+// SaveAppSettings saves settings and applies changes
+func (a *App) SaveAppSettings(settings AppSettings) error {
+	// AutoStart
+	if err := a.SetRunOnStartup(settings.AutoStart); err != nil {
+		log.Printf("Failed to set startup: %v", err)
+	}
+
+	// Notifications
+	notifVal := "false"
+	if settings.Notifications {
+		notifVal = "true"
+	}
+	a.store.SetSetting("notifications_enabled", notifVal)
+
+	// Port
+	if settings.Port != a.proxyServer.GetPort() {
+		// Port changed
+		// 1. Save to store
+		a.store.SetSetting("proxy_port", fmt.Sprintf("%d", settings.Port))
+
+		// 2. Restart Proxy
+		if err := a.proxyServer.Restart(settings.Port); err != nil {
+			return fmt.Errorf("failed to restart proxy: %w", err)
+		}
+
+		// 3. Re-apply system proxy if enabled
+		if a.GetProtectionStatus() {
+			a.SetSystemProxy(true)
+		}
+	}
+
+	return nil
 }

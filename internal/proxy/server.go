@@ -119,6 +119,19 @@ func (s *Server) Stop() {
 	}
 }
 
+// GetPort returns the current port
+func (s *Server) GetPort() int {
+	return s.port
+}
+
+// Restart restarts the proxy with a new port
+func (s *Server) Restart(port int) error {
+	s.Stop()
+	time.Sleep(100 * time.Millisecond) // Give it a moment
+	s.port = port
+	return s.Start()
+}
+
 // LoggingRuleSet intercepts requests for logging
 type LoggingRuleSet struct {
 	store     store.Store
