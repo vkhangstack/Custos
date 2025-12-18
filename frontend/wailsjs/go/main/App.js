@@ -14,6 +14,10 @@ export function EnableProtection(arg1) {
   return window['go']['main']['App']['EnableProtection'](arg1);
 }
 
+export function GetAppInfo() {
+  return window['go']['main']['App']['GetAppInfo']();
+}
+
 export function GetChartData() {
   return window['go']['main']['App']['GetChartData']();
 }

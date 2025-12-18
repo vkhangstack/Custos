@@ -147,6 +147,31 @@ export namespace core {
 
 }
 
+export namespace main {
+	
+	export class AppInfo {
+	    name: string;
+	    version: string;
+	    description: string;
+	    author: string;
+	    contact?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AppInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.version = source["version"];
+	        this.description = source["description"];
+	        this.author = source["author"];
+	        this.contact = source["contact"];
+	    }
+	}
+
+}
+
 export namespace system {
 	
 	export class ConnectionInfo {

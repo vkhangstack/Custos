@@ -224,3 +224,22 @@ func (a *App) GetStartupStatus() bool {
 	}
 	return enabled
 }
+
+// AppInfo holds application information
+type AppInfo struct {
+	Name        string  `json:"name"`
+	Version     string  `json:"version"`
+	Description string  `json:"description"`
+	Author      string  `json:"author"`
+	Contact     *string `json:"contact,omitempty"`
+}
+
+// GetAppInfo returns application information
+func (a *App) GetAppInfo() AppInfo {
+	return AppInfo{
+		Name:        "Custos",
+		Version:     "1.0.0",
+		Description: "A modern application for monitoring and traffic analysis.",
+		Author:      "vkhangstack",
+	}
+}

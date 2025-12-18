@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -55,7 +56,14 @@ func main() {
 	}
 	AboutMenu := AppMenu.AddSubmenu("Help")
 	AboutMenu.AddText("About", keys.CmdOrCtrl("a"), func(_ *menu.CallbackData) {
-		// do something
+		info := app.GetAppInfo()
+		rt.MessageDialog(app.ctx, rt.MessageDialogOptions{
+			Type:          rt.InfoDialog,
+			Title:         "About " + info.Name,
+			Message:       fmt.Sprintf("%s v%s\n\n%s", info.Name, info.Version, info.Description),
+			Buttons:       []string{"OK"},
+			DefaultButton: "OK",
+		})
 	})
 	// Create application with options
 	err = wails.Run(&options.App{
