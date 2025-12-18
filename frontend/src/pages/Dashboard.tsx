@@ -35,7 +35,7 @@ export default function Dashboard() {
             const currentStats = fetchedStats || new core.Stats();
             setStats(currentStats);
             setConnections(fetchedConns || []);
-
+            console.log("fetchedStats", fetchedStats);
             // Calculate live rate for the chart (append to history)
             setChartData(prevData => {
                 const now = new Date();
@@ -49,7 +49,7 @@ export default function Dashboard() {
                     const down = currentStats.total_download || 0;
                     const prevUp = prevStatsRef.current.total_upload || 0;
                     const prevDown = prevStatsRef.current.total_download || 0;
-                    
+
                     uploadRate = up - prevUp;
                     downloadRate = down - prevDown;
                 }
@@ -120,6 +120,7 @@ export default function Dashboard() {
 
 
 
+
     const getRootDomain = (domain: string) => {
         if (!domain) return '-';
 
@@ -151,13 +152,12 @@ export default function Dashboard() {
                 <button
                     onClick={toggleProtection}
                     disabled={isProtectionLoading || protectionEnabled === null}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 active:scale-95 hover:scale-105 ${
-                        protectionEnabled === null
-                            ? 'bg-muted text-muted-foreground border border-muted-foreground/20'
-                            : protectionEnabled
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 active:scale-95 hover:scale-105 ${protectionEnabled === null
+                        ? 'bg-muted text-muted-foreground border border-muted-foreground/20'
+                        : protectionEnabled
                             ? 'bg-green-500/20 text-green-500 border border-green-500/50 hover:bg-green-500/30 animate-cyber-pulse'
                             : 'bg-red-500/20 text-red-500 border border-red-500/50 hover:bg-red-500/30'
-                    } ${isProtectionLoading || protectionEnabled === null ? 'opacity-50 cursor-not-allowed' : ''} min-w-[180px] justify-center`}
+                        } ${isProtectionLoading || protectionEnabled === null ? 'opacity-50 cursor-not-allowed' : ''} min-w-[180px] justify-center`}
                 >
                     {isProtectionLoading || protectionEnabled === null ? (
                         <Loader2 size={20} className="animate-spin" />
@@ -172,13 +172,13 @@ export default function Dashboard() {
                     {protectionEnabled === null
                         ? t('Loading...')
                         : protectionEnabled
-                        ? t('dashboard.disableProtection')
-                        : t('dashboard.enableProtection')}
+                            ? t('dashboard.disableProtection')
+                            : t('dashboard.enableProtection')}
                 </button>
             </div>
 
             {/* Status Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-6">
                 <StatCard
                     title={t('dashboard.activeConnections')}
                     value={connections.length}
@@ -200,32 +200,36 @@ export default function Dashboard() {
                     iconColorClass="text-purple-400"
                     bgClass="bg-purple-500/20"
                 />
+                <StatCard
+                    title={t('dashboard.adsBlocked')}
+                    value={stats.adblock_hits || 0}
+                    icon={Shield}
+                    iconColorClass="text-orange-400"
+                    bgClass="bg-orange-500/20"
+                />
             </div>
 
             {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-1 gap-y-6">
                 <div className="lg:col-span-2 space-y-4">
                     <div className="flex justify-end space-x-2">
                         {['1h', '3h', '24h'].map((range) => (
                             <button
                                 key={range}
                                 onClick={() => setTimeRange(range)}
-                                className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                                    timeRange === range
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                                }`}
+                                className={`px-3 py-1 text-sm rounded-md transition-colors ${timeRange === range
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                                    }`}
                             >
                                 {range}
                             </button>
                         ))}
                     </div>
-                    <TrafficChart data={chartData} timeRange={timeRange} />
                 </div>
-                <div className="lg:col-span-1">
-                     <TopUsageList items={topUsageList} />
-                </div>
+                <TrafficChart data={chartData} timeRange={timeRange} />
+                <TopUsageList items={topUsageList} />
             </div>
-        </div>
+        </div >
     );
 }

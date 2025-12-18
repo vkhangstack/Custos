@@ -13,7 +13,8 @@ export const vi = {
             network: "Mạng",
             expand: "Mở rộng",
             collapse: "Thu gọn",
-            author: "Tác giả"
+            author: "Tác giả",
+            adblock: "Bộ lọc Adblock"
         },
         home: {
             welcome: "Vui lòng nhập tên của bạn bên dưới 👇",
@@ -30,6 +31,7 @@ export const vi = {
             upload: "Tải lên",
             enableProtection: "Bật Bảo vệ",
             disableProtection: "Tắt Bảo vệ",
+            adsBlocked: "Quảng cáo đã chặn",
         },
         traffic: {
             title: "Giám sát Lưu lượng",

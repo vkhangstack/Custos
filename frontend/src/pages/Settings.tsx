@@ -61,7 +61,8 @@ export default function Settings() {
             await SaveAppSettings({
                 port: port,
                 notifications: notifications,
-                auto_start: autoStart
+                auto_start: autoStart,
+                adblock_enabled: true
             });
             showToast(t('settings.save') + ' Success', 'success');
         } catch (error) {
@@ -71,7 +72,7 @@ export default function Settings() {
     };
 
     const actions = (
-        <button 
+        <button
             onClick={handleSave}
             className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg transition-colors font-medium shadow-lg shadow-primary/20"
         >

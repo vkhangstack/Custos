@@ -23,6 +23,13 @@ type Store interface {
 	DeleteRule(id string) error
 	UpdateRule(rule core.Rule) error
 	IncrementRuleHit(id string, domain string) error
+	IncrementAdblockHit(domain string) error
+	// Adblock Filters
+	AddAdblockFilter(filter core.AdblockFilter) error
+	GetAdblockFilters() []core.AdblockFilter
+	DeleteAdblockFilter(id string) error
+	UpdateAdblockFilter(filter core.AdblockFilter) error
+	ClearAdblockFilters() error
 	// Settings
 	GetSetting(key string) (string, error)
 	SetSetting(key, value string) error

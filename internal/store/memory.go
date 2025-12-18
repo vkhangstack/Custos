@@ -192,8 +192,21 @@ func (s *MemoryStore) SetSetting(key, value string) error {
 func (s *MemoryStore) DeleteRule(id string) error      { return nil }
 func (s *MemoryStore) UpdateRule(rule core.Rule) error { return nil }
 
+func (s *MemoryStore) AddAdblockFilter(filter core.AdblockFilter) error    { return nil }
+func (s *MemoryStore) GetAdblockFilters() []core.AdblockFilter             { return nil }
+func (s *MemoryStore) DeleteAdblockFilter(id string) error                 { return nil }
+func (s *MemoryStore) UpdateAdblockFilter(filter core.AdblockFilter) error { return nil }
+func (s *MemoryStore) ClearAdblockFilters() error                          { return nil }
+
 func (s *MemoryStore) IncrementRuleHit(id string, domain string) error {
 	// Not fully implemented for rules in MemoryStore yet as MemoryStore
 	// doesn't actually store/manage rules in the current implementation.
+	return nil
+}
+
+func (s *MemoryStore) IncrementAdblockHit(domain string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.stats.AdblockHits++
 	return nil
 }

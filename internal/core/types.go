@@ -15,6 +15,7 @@ const (
 	RuleSourceProtocolHttpsBlocked RuleType = "protection_https_blocked"
 	RuleSourceProtocolHttpAllowed  RuleType = "protection_http_allowed"
 	RuleSourceProtocolHttpsAllowed RuleType = "protection_https_allowed"
+	RuleSourceAdsblock             RuleType = "adsblock"
 )
 
 const (
@@ -45,6 +46,7 @@ type LogEntry struct {
 	BytesRecv   int64     `json:"bytes_recv"`
 	Status      string    `json:"status"`  // "allowed", "blocked", "error"
 	Latency     int64     `json:"latency"` // in ms
+	Reason      *string   `json:"reason"`
 }
 
 // Stats represents aggregated statistics
@@ -53,6 +55,7 @@ type Stats struct {
 	TotalDownload int64            `json:"total_download"`
 	ActiveConns   int              `json:"active_connections"`
 	TopDomains    map[string]int64 `json:"top_domains"`
+	AdblockHits   int64            `json:"adblock_hits"`
 	Timestamp     time.Time        `json:"timestamp"` // Unix Milli
 }
 
@@ -105,6 +108,16 @@ type PaginatedRulesResponse struct {
 type AppSetting struct {
 	Key   string `gorm:"primaryKey" json:"key"`
 	Value string `json:"value"`
+}
+
+// AdblockFilter represents an adblock filter list (e.g. EasyList)
+type AdblockFilter struct {
+	ID          string    `gorm:"primaryKey" json:"id"`
+	Name        string    `json:"name"`
+	URL         string    `json:"url"`
+	Enabled     bool      `json:"enabled"`
+	LastUpdated time.Time `json:"last_updated"`
+	Hits        int64     `json:"hits"`
 }
 
 type Process struct {

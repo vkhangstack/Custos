@@ -10,6 +10,7 @@ const Reports = lazy(() => import('./pages/Reports'));
 const Settings = lazy(() => import('./pages/Settings'));
 const OpenSource = lazy(() => import('./pages/OpenSource'));
 const About = lazy(() => import('./pages/About'));
+const AdblockFilters = lazy(() => import('./pages/AdblockFilters'));
 import { EventsOn } from '../wailsjs/runtime/runtime';
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
@@ -48,6 +49,7 @@ function App() {
                 <Route path="traffic" element={<Traffic />} />
                 <Route path="proxy" element={<ProxyManager />} />
                 <Route path="rules" element={<Rules />} />
+                <Route path="adblock-filters" element={<AdblockFilters />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="opensource" element={<OpenSource />} />

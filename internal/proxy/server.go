@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync"
 	"time"
 
+	"github.com/vkhangstack/Custos/internal/adblock"
 	"github.com/vkhangstack/Custos/internal/core"
 	"github.com/vkhangstack/Custos/internal/store"
 	"github.com/vkhangstack/Custos/internal/system"
@@ -27,22 +29,66 @@ type Server struct {
 	running           bool
 	listener          net.Listener
 	protectionEnabled bool
+	adblockEnabled    bool
+	adblockEngine     *adblock.Engine
+	mu                sync.RWMutex
 }
 
 // NewServer creates a new proxy server
 func NewServer(store store.Store, blocklist *core.BlocklistManager, systemTracker *system.Tracker, port int) *Server {
+	// Initialize adblock engine with default rules for now
+	// In the future, this can be loaded from DB or files
+	adblockRules := `||ads.google.com^
+||doubleclick.net^
+||adnxs.com^
+||googleadservices.com^
+||pagead2.googlesyndication.com^
+||analytics.google.com^
+||facebook.com/tr/^
+`
+	engine := adblock.NewEngine(adblockRules)
+
 	return &Server{
-		store:         store,
-		blocklist:     blocklist,
-		systemTracker: systemTracker,
-		port:          port,
+		store:             store,
+		blocklist:         blocklist,
+		systemTracker:     systemTracker,
+		port:              port,
+		adblockEngine:     engine,
+		protectionEnabled: true, // Default
 	}
 }
 
 // SetProtection enables or disables the HTTP protection
 func (s *Server) SetProtection(enabled bool) {
+	s.mu.Lock()
 	s.protectionEnabled = enabled
+	s.mu.Unlock()
 	log.Printf("Protection mode set to: %v", enabled)
+}
+
+// SetAdblockEnabled enables or disables the adblock engine
+func (s *Server) SetAdblockEnabled(enabled bool) {
+	s.mu.Lock()
+	s.adblockEnabled = enabled
+	s.mu.Unlock()
+	log.Printf("Adblock engine enabled: %v", enabled)
+}
+
+func (s *Server) ReloadAdblockEngine(rules string) {
+	// Create new engine outside the lock (heavy operation)
+	newEngine := adblock.NewEngine(rules)
+	log.Printf("Adblock engine parsed with %d bytes of rules", len(rules))
+
+	s.mu.Lock()
+	oldEngine := s.adblockEngine
+	s.adblockEngine = newEngine
+	s.mu.Unlock()
+
+	// Close old engine outside the lock
+	if oldEngine != nil {
+		oldEngine.Close()
+	}
+	log.Printf("Adblock engine swapped successfully")
 }
 
 const logIDKey = "logID"
@@ -118,6 +164,9 @@ func (s *Server) Stop() {
 	if s.listener != nil {
 		s.listener.Close()
 	}
+	if s.adblockEngine != nil {
+		s.adblockEngine.Close()
+	}
 }
 
 // GetPort returns the current port
@@ -157,20 +206,34 @@ func (r *LoggingRuleSet) Allow(ctx context.Context, req *socks5.Request) (contex
 		procName, procID = r.server.systemTracker.GetProcessFromPort(req.RemoteAddr.Port)
 	}
 
-	// Check Protection Mode (Block HTTP Port 80)
-	if r.server.protectionEnabled {
-		if req.DestAddr.Port == 80 {
-			r.logBlock(req, domain, string(core.RuleSourceProtocolHttpBlocked), &core.Process{
+	// Check Adblock Engine
+	sEnabled := false
+	var engine *adblock.Engine
+
+	r.server.mu.RLock()
+	sEnabled = r.server.adblockEnabled
+	engine = r.server.adblockEngine
+	r.server.mu.RUnlock()
+
+	if sEnabled && engine != nil {
+		testURL := "http://" + domain
+		log.Printf("[DEBUG] Checking adblock for: %s", testURL)
+		if engine.Check(testURL, "http://"+domain, "other") {
+			r.store.IncrementAdblockHit(domain)
+			r.logBlock(req, domain, string(core.RuleSourceAdsblock), &core.Process{
 				PID:  procID,
 				Name: procName,
 			})
-			log.Printf("Blocked HTTP request to %s (Port 80) due to active protection", domain)
+			log.Printf("Blocked by adblock engine: %s", domain)
 			return ctx, false
+		} else {
+			log.Printf("[DEBUG] Not blocked by adblock: %s", domain)
 		}
 	}
 
 	// Check Blocklist
 	if r.blocklist.IsBlocked(domain) {
+		r.store.IncrementAdblockHit(domain)
 		r.logBlock(req, domain, string(core.RuleSourceBlocklist), &core.Process{
 			PID:  procID,
 			Name: procName,
@@ -192,8 +255,10 @@ func (r *LoggingRuleSet) Allow(ctx context.Context, req *socks5.Request) (contex
 		// Go's filepath.Match is good for globs.
 		if matched, _ := matchDomain(rule.Pattern, domain); matched {
 			r.store.IncrementRuleHit(rule.ID, domain)
+			r.store.IncrementAdblockHit(domain)
+
 			if rule.Type == core.RuleBlock {
-				r.logBlock(req, domain, string(core.RuleSourceCustom), &core.Process{
+				r.logBlock(req, domain, string(core.RuleSourceAdsblock), &core.Process{
 					PID:  procID,
 					Name: procName,
 				})
@@ -259,6 +324,7 @@ func (r *LoggingRuleSet) logBlock(req *socks5.Request, domain string, reason str
 		BytesRecv:   0,
 		ProcessName: process.Name,
 		ProcessID:   process.PID,
+		Reason:      &reason,
 	}
 	r.store.AddLog(entry)
 }

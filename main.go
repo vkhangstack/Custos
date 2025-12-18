@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/getlantern/systray"
+	"github.com/vkhangstack/Custos/internal/utils"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/logger"
 	"github.com/wailsapp/wails/v2/pkg/menu"
@@ -113,17 +114,20 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup: func(ctx context.Context) {
 			app.startup(ctx)
-			go setupTray(app)
+			if utils.GetOS() == utils.Windows {
+				go setupTray(app)
+			}
 		},
 		OnShutdown: func(ctx context.Context) {
 			app.shutdown(ctx)
-			systray.Quit()
+			if utils.GetOS() == utils.Windows {
+				systray.Quit()
+			}
 		},
 		Menu: AppMenu,
 		Linux: &linux.Options{
-			Icon:             iconData,
-			ProgramName:      strings.ToLower(app.GetAppInfo().Name),
-			WebviewGpuPolicy: linux.WebviewGpuPolicyAlways,
+			Icon:        iconData,
+			ProgramName: strings.ToLower(app.GetAppInfo().Name),
 		},
 		LogLevel:           logger.DEBUG,
 		LogLevelProduction: logger.WARNING,
@@ -142,7 +146,7 @@ func main() {
 func setupTray(app *App) {
 	runtime.LockOSThread()
 	systray.Run(func() {
-		if runtime.GOOS == "windows" {
+		if utils.GetOS() == utils.Windows {
 			systray.SetIcon(iconIco)
 		} else {
 			systray.SetIcon(iconData)

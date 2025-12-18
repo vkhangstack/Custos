@@ -1,5 +1,46 @@
 export namespace core {
 	
+	export class AdblockFilter {
+	    id: string;
+	    name: string;
+	    url: string;
+	    enabled: boolean;
+	    // Go type: time
+	    last_updated: any;
+	    hits: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new AdblockFilter(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.url = source["url"];
+	        this.enabled = source["enabled"];
+	        this.last_updated = this.convertValues(source["last_updated"], null);
+	        this.hits = source["hits"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class LogEntry {
 	    id: string;
 	    // Go type: time
@@ -16,6 +57,7 @@ export namespace core {
 	    bytes_recv: number;
 	    status: string;
 	    latency: number;
+	    reason?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new LogEntry(source);
@@ -37,6 +79,7 @@ export namespace core {
 	        this.bytes_recv = source["bytes_recv"];
 	        this.status = source["status"];
 	        this.latency = source["latency"];
+	        this.reason = source["reason"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -117,6 +160,7 @@ export namespace core {
 	    total_download: number;
 	    active_connections: number;
 	    top_domains: Record<string, number>;
+	    adblock_hits: number;
 	    // Go type: time
 	    timestamp: any;
 	
@@ -130,6 +174,7 @@ export namespace core {
 	        this.total_download = source["total_download"];
 	        this.active_connections = source["active_connections"];
 	        this.top_domains = source["top_domains"];
+	        this.adblock_hits = source["adblock_hits"];
 	        this.timestamp = this.convertValues(source["timestamp"], null);
 	    }
 	
@@ -217,6 +262,7 @@ export namespace main {
 	    port: number;
 	    notifications: boolean;
 	    auto_start: boolean;
+	    adblock_enabled: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppSettings(source);
@@ -227,6 +273,7 @@ export namespace main {
 	        this.port = source["port"];
 	        this.notifications = source["notifications"];
 	        this.auto_start = source["auto_start"];
+	        this.adblock_enabled = source["adblock_enabled"];
 	    }
 	}
 

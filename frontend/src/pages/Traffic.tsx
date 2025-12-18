@@ -185,7 +185,7 @@ export default function Traffic() {
                                         <th className="p-4 font-medium text-muted-foreground">Time</th>
                                         <th className="p-4 font-medium text-muted-foreground">Process</th>
                                         <th className="p-4 font-medium text-muted-foreground">Domain / IP</th>
-                                        <th className="p-4 font-medium text-muted-foreground">Type</th>
+                                        <th className="p-4 font-medium text-muted-foreground">Reason</th>
                                         <th className="p-4 font-medium text-muted-foreground">Protocol</th>
                                         <th className="p-4 font-medium text-muted-foreground">Status</th>
                                         <th className="p-4 font-medium text-muted-foreground text-right">Size</th>
@@ -218,10 +218,10 @@ export default function Traffic() {
                                                 <div className="font-medium text-sm mb-0.5">{log.domain || '-'}</div>
                                                 <div className="text-muted-foreground">{log.dst_ip}:{log.dst_port}</div>
                                             </td>
-                                            <td className="p-4">
-                                                <span className={`px-2 py-0.5 rounded text-xs font-medium border ${log.type === 'dns' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : 'bg-purple-500/10 text-purple-500 border-purple-500/20'}`}>
-                                                    {log.type.toUpperCase()}
-                                                </span>
+                                            <td className="p-4 items-center flex justify-start">
+                                                {log.reason ? <span className={`px-2 py-0.5 rounded text-xs font-medium border ${log.reason === 'adsblock' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : 'bg-purple-500/10 text-purple-500 border-purple-500/20'}`}>
+                                                    {log.reason.toLocaleUpperCase()}
+                                                </span> : ""}
                                             </td>
                                             <td className="p-4 text-muted-foreground uppercase text-xs font-semibold">{log.protocol}</td>
                                             <td className="p-4">

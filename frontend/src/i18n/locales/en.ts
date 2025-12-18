@@ -13,7 +13,8 @@ export const en = {
             network: "Network",
             expand: "Expand",
             collapse: "Collapse",
-            author: "Author"
+            author: "Author",
+            adblock: "Adblock Filters"
         },
         home: {
             welcome: "Please enter your name below 👇",
@@ -30,6 +31,7 @@ export const en = {
             upload: "Upload",
             enableProtection: "Enable Protection",
             disableProtection: "Disable Protection",
+            adsBlocked: "Ads Blocked",
         },
         traffic: {
             title: "Traffic Monitoring",

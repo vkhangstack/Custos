@@ -4,10 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/vkhangstack/Custos/internal/system"
@@ -34,6 +38,8 @@ type App struct {
 	proxyServer   *proxy.Server
 	dnsServer     *dns.Server
 	systemTracker *system.Tracker
+	blocklist     *core.BlocklistManager
+	refreshMu     sync.Mutex
 }
 
 // NewApp creates a new App application struct
@@ -79,6 +85,7 @@ func NewApp() *App {
 		proxyServer:   proxy.NewServer(s, bm, systemTracker, port),
 		dnsServer:     dns.NewServer(s, bm, 5353),
 		systemTracker: systemTracker,
+		blocklist:     bm,
 	}
 }
 
@@ -96,7 +103,6 @@ func (a *App) startup(ctx context.Context) {
 	// 	fmt.Printf("Failed to set system proxy on startup: %v\n", err)
 	// }
 
-	// Restore Protection State
 	if enabled := a.GetProtectionStatus(); enabled {
 		a.proxyServer.SetProtection(true)
 		a.SetSystemProxy(true)
@@ -104,6 +110,19 @@ func (a *App) startup(ctx context.Context) {
 		a.proxyServer.SetProtection(false)
 		a.SetSystemProxy(false)
 	}
+
+	// Restore Adblock State
+	if enabled := a.GetAdblockStatus(); enabled {
+		a.proxyServer.SetAdblockEnabled(true)
+	} else {
+		a.proxyServer.SetAdblockEnabled(false)
+	}
+
+	// Seed and Refresh Filters
+	go func() {
+		a.seedFilters()
+		a.RefreshAdblockFilters()
+	}()
 
 	// Start a ticker to emit logs to frontend
 	go a.broadcastLogs()
@@ -116,6 +135,7 @@ func (a *App) shutdown(ctx context.Context) {
 		fmt.Printf("Failed to disable system proxy on shutdown: %v\n", err)
 	}
 	a.proxyServer.Stop()
+	ctx.Done()
 }
 
 // broadcastLogs sends new logs to frontend events
@@ -170,6 +190,27 @@ func (a *App) GetProtectionStatus() bool {
 	val, err := a.store.GetSetting("protection_enabled")
 	if err != nil {
 		return false
+	}
+	return val == "true"
+}
+
+// EnableAdblock toggles the adblock engine
+func (a *App) EnableAdblock(enabled bool) {
+	a.proxyServer.SetAdblockEnabled(enabled)
+	// Persist
+	val := "false"
+	if enabled {
+		val = "true"
+	}
+	a.store.SetSetting("adblock_enabled", val)
+}
+
+// GetAdblockStatus returns the current status
+func (a *App) GetAdblockStatus() bool {
+	val, err := a.store.GetSetting("adblock_enabled")
+	if err != nil || val == "" {
+		// Default to enabled if not set
+		return true
 	}
 	return val == "true"
 }
@@ -279,9 +320,10 @@ func (a *App) GetAppInfo() *AppInfo {
 
 // AppSettings defines configurable settings
 type AppSettings struct {
-	Port          int  `json:"port"`
-	Notifications bool `json:"notifications"`
-	AutoStart     bool `json:"auto_start"`
+	Port           int  `json:"port"`
+	Notifications  bool `json:"notifications"`
+	AutoStart      bool `json:"auto_start"`
+	AdblockEnabled bool `json:"adblock_enabled"`
 }
 
 // GetAppSettings returns current settings
@@ -299,10 +341,14 @@ func (a *App) GetAppSettings() AppSettings {
 	// AutoStart
 	autoStart := a.GetStartupStatus()
 
+	// Adblock
+	adblockEnabled := a.GetAdblockStatus()
+
 	return AppSettings{
-		Port:          port,
-		Notifications: notifications,
-		AutoStart:     autoStart,
+		Port:           port,
+		Notifications:  notifications,
+		AutoStart:      autoStart,
+		AdblockEnabled: adblockEnabled,
 	}
 }
 
@@ -337,5 +383,195 @@ func (a *App) SaveAppSettings(settings AppSettings) error {
 		}
 	}
 
+	// Adblock
+	a.EnableAdblock(settings.AdblockEnabled)
+
 	return nil
+}
+
+// Adblock Filter Management
+
+func (a *App) GetAdblockFilters() []core.AdblockFilter {
+	return a.store.GetAdblockFilters()
+}
+
+func (a *App) AddAdblockFilter(name, url string) error {
+	filter := core.AdblockFilter{
+		ID:      utils.GenerateIDString(),
+		Name:    name,
+		URL:     url,
+		Enabled: true,
+	}
+	err := a.store.AddAdblockFilter(filter)
+	if err == nil {
+		go a.RefreshAdblockFilters()
+	}
+	return err
+}
+
+func (a *App) DeleteAdblockFilter(id string) error {
+	err := a.store.DeleteAdblockFilter(id)
+	if err == nil {
+		go a.RefreshAdblockFilters()
+	}
+	return err
+}
+
+func (a *App) ToggleAdblockFilter(id string, enabled bool) error {
+	filters := a.store.GetAdblockFilters()
+	for _, f := range filters {
+		if f.ID == id {
+			f.Enabled = enabled
+			err := a.store.UpdateAdblockFilter(f)
+			if err == nil {
+				go a.RefreshAdblockFilters()
+			}
+			return err
+		}
+	}
+	return fmt.Errorf("filter not found")
+}
+
+func (a *App) RefreshAdblockFilters() error {
+	a.refreshMu.Lock()
+	defer a.refreshMu.Unlock()
+
+	filters := a.store.GetAdblockFilters()
+	var allRules strings.Builder
+	var blocklistSources []string
+	// Always include the default hosts list as a base for the blocklist
+	blocklistSources = append(blocklistSources, "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts")
+
+	// Default hardcoded rules for adblock engine
+	allRules.WriteString(`||ads.google.com^
+||doubleclick.net^
+||adnxs.com^
+||googleadservices.com^
+||pagead2.googlesyndication.com^
+||analytics.google.com^
+||facebook.com/tr/^
+`)
+
+	for _, f := range filters {
+		if !f.Enabled {
+			continue
+		}
+
+		// Add to blocklist sources
+		homeDir, _ := os.UserHomeDir()
+		filterDir := filepath.Join(homeDir, ".custos", "filters")
+		filePath := filepath.Join(filterDir, f.ID+".txt")
+
+		if _, err := os.Stat(filePath); err == nil {
+			blocklistSources = append(blocklistSources, filePath)
+		} else if f.URL != "" {
+			blocklistSources = append(blocklistSources, f.URL)
+		}
+
+		content, err := a.getFilterContent(f)
+		if err == nil {
+			allRules.WriteString("\n")
+			allRules.WriteString(content)
+		}
+	}
+
+	// Update and reload adblock engine
+	a.proxyServer.ReloadAdblockEngine(allRules.String())
+
+	// Update and reload blocklist
+	if a.blocklist != nil {
+		a.blocklist.SetSources(blocklistSources)
+		a.blocklist.Load()
+	}
+
+	return nil
+}
+
+func (a *App) getFilterContent(f core.AdblockFilter) (string, error) {
+	homeDir, _ := os.UserHomeDir()
+	filterDir := filepath.Join(homeDir, ".custos", "filters")
+	os.MkdirAll(filterDir, 0755)
+	filePath := filepath.Join(filterDir, f.ID+".txt")
+
+	if f.URL == "" {
+		return "", nil
+	}
+
+	// Check if file exists and is less than 24h old
+	info, err := os.Stat(filePath)
+	if err == nil && time.Since(info.ModTime()) < 24*time.Hour {
+		content, err := os.ReadFile(filePath)
+		if err == nil {
+			return string(content), nil
+		}
+	}
+
+	// Download
+	log.Printf("Downloading adblock filter: %s from %s", f.Name, f.URL)
+	resp, err := http.Get(f.URL)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	content, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	os.WriteFile(filePath, content, 0644)
+
+	f.LastUpdated = time.Now()
+	a.store.UpdateAdblockFilter(f)
+
+	return string(content), nil
+}
+
+func (a *App) seedFilters() {
+	// Truncate before seeding as requested
+	a.store.ClearAdblockFilters()
+
+	defaults := []struct {
+		Name string
+		URL  string
+	}{
+		{"AdGuard DNS", "https://justdomains.github.io/blocklists/lists/adguarddns-justdomains.txt"},
+		{"Easy List", "https://justdomains.github.io/blocklists/lists/easylist-justdomains.txt"},
+		{"Easy Privacy", "https://justdomains.github.io/blocklists/lists/easyprivacy-justdomains.txt"},
+		{"NoCoin", "https://justdomains.github.io/blocklists/lists/nocoin-justdomains.txt"},
+		{"Youtube Clear View", "https://github.com/yokoffing/filterlists/blob/main/youtube_clear_view.txt"},
+		{"Privacy Essentials", "https://github.com/yokoffing/filterlists/blob/main/privacy_essentials.txt"},
+		{"Abblock Pro Mini", "https://github.com/hagezi/dns-blocklists/blob/main/adblock/pro.mini.txt"},
+		{"Pi-hole", "https://raw.githubusercontent.com/xxcriticxx/.pl-host-file/master/hosts.txt"},
+		{"Ramnit", "https://1275.ru/DGA/ramnit.txt"},
+		{"SharkBot", "https://1275.ru/DGA/sharkbot.txt"},
+		{"QSnatch", "https://1275.ru/DGA/qsnatch.txt"},
+		{"CryptoLocker", "https://1275.ru/DGA/cryptolocker.txt"},
+		{"1024 Hosts", "https://raw.githubusercontent.com/Goooler/1024_hosts/master/hosts"},
+	}
+
+	existingFilters := a.store.GetAdblockFilters()
+	existingURLs := make(map[string]bool)
+	for _, f := range existingFilters {
+		existingURLs[f.URL] = true
+	}
+
+	added := false
+	for _, d := range defaults {
+		if !existingURLs[d.URL] {
+			filter := core.AdblockFilter{
+				ID:      utils.GenerateIDString(),
+				Name:    d.Name,
+				URL:     d.URL,
+				Enabled: true,
+			}
+			if err := a.store.AddAdblockFilter(filter); err == nil {
+				added = true
+			}
+		}
+	}
+
+	if added {
+		go a.RefreshAdblockFilters()
+	}
 }
