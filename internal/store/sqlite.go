@@ -412,7 +412,16 @@ func (s *SQLiteStore) seedDefaultRules() {
 	url := "https://adaway.org/hosts.txt"
 	log.Println("Seeding default rules from", url)
 
-	resp, err := http.Get(url)
+	// Create a client that explicitly bypasses system proxy
+	// This is critical on Windows when the app itself is the system proxy
+	client := &http.Client{
+		Transport: &http.Transport{
+			Proxy: nil, // Bypass system proxy
+		},
+		Timeout: 30 * time.Second,
+	}
+
+	resp, err := client.Get(url)
 	if err != nil {
 		log.Printf("Failed to fetch blocklist: %v", err)
 		return

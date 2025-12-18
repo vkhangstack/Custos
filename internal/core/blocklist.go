@@ -43,7 +43,14 @@ func (m *BlocklistManager) Load() error {
 }
 
 func (m *BlocklistManager) loadSource(url string) error {
-	client := &http.Client{Timeout: 30 * time.Second}
+	// Create a client that explicitly bypasses system proxy
+	client := &http.Client{
+		Transport: &http.Transport{
+			Proxy: nil, // Bypass system proxy
+		},
+		Timeout: 30 * time.Second,
+	}
+
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
