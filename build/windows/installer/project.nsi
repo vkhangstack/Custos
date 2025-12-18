@@ -100,6 +100,9 @@ SectionEnd
 Section "uninstall"
     !insertmacro wails.setShellContext
 
+    # Terminate the application if it's running
+    ExecWait 'taskkill /F /IM "${PRODUCT_EXECUTABLE}" /T'
+
     DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Custos"
     
     RMDir /r InstallDir
