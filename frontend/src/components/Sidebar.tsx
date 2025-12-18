@@ -67,7 +67,7 @@ const Sidebar = () => {
             </nav>
 
             {/* Footer */}
-            <div className={`p-4 border-t border-border text-sm text-muted-foreground bg-muted/20 ${isCollapsed ? 'text-center p-4' : ''}`}>
+            <div className={`flex flex-row gap-6 justify-between items-center p-4 border-t border-border text-sm text-muted-foreground bg-muted/20 ${isCollapsed ? 'text-center p-4' : ''}`}>
                 <button
                     className={`flex items-center justify-center gap-2 w-20 p-1 mb-2 rounded border border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors text-xs ${isCollapsed ? 'w-auto mx-auto mb-3 border-none' : ''}`}
                     onClick={toggleLanguage}
@@ -86,8 +86,8 @@ const Sidebar = () => {
                         {/* <div className="text-xs">{t('sidebar.author')}: {config.appAuthor}</div> */}
                     </>
                 ) : (
-                    <div className="text-xs">
-                        <span className="block mb-1">{config?.version}</span>
+                    <div className="text-xs flex justify-center items-center w-full">
+                        <span className="block text-center justify-center w-full">{config?.version}</span>
                     </div>
                 )}
             </div>

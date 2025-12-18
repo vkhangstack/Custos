@@ -122,14 +122,12 @@ export default function Dashboard() {
 
     const getRootDomain = (domain: string) => {
         if (!domain) return '-';
-        // Return IP as is
+
         if (/^(\d{1,3}\.){3}\d{1,3}$/.test(domain)) return domain;
 
         const parts = domain.split('.');
-        // Simple heuristic: if parts > 2, take last 2 (e.g. mail.google.com -> google.com)
-        // Note: This is imperfect for ccTLDs (google.co.uk -> co.uk), but sufficient for now without heavy libraries.
-        if (parts.length > 2) {
-            return parts.slice(-2).join('.');
+        if (parts.length > 3) {
+            return parts.slice(-3).join('.');
         }
         return domain;
     };

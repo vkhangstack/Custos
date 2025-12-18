@@ -21,6 +21,7 @@ type SQLiteStore struct {
 	db          *gorm.DB
 	subscribers []func(core.LogEntry)
 	mu          sync.RWMutex
+	hitCache    sync.Map // Map of [ruleID:domain]time.Time for de-duplication
 
 	// Rule Cache
 	cachedRules []core.Rule
@@ -292,6 +293,7 @@ func (s *SQLiteStore) ResetData() {
 	s.db.Exec("DELETE FROM log_entries")
 	s.db.Exec("DELETE FROM traffic_stats_models")
 	s.db.Exec("DELETE FROM stats")
+	s.db.Exec("UPDATE rules SET hit_count = 0")
 }
 
 // Rule Management Implementation
@@ -495,4 +497,19 @@ func (s *SQLiteStore) seedDefaultRules() {
 
 func (s *SQLiteStore) TruncateRules() error {
 	return s.db.Exec("DELETE FROM rules").Error
+}
+
+func (s *SQLiteStore) IncrementRuleHit(id string, domain string) error {
+	// De-duplicate hits within a 5-second window per rule/domain
+	cacheKey := id + ":" + domain
+	now := time.Now()
+	if lastHit, ok := s.hitCache.Load(cacheKey); ok {
+		if now.Sub(lastHit.(time.Time)) < 1*time.Second {
+			// Skip incrementing if last hit was less than 1s ago
+			return nil
+		}
+	}
+	s.hitCache.Store(cacheKey, now)
+
+	return s.db.Model(&core.Rule{}).Where("id = ?", id).Update("hit_count", gorm.Expr("hit_count + 1")).Error
 }

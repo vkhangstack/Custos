@@ -38,7 +38,6 @@ export default function Rules() {
     const fetchRules = async () => {
         try {
             // Use server-side pagination
-            // Note: GetRulesPaginated bindings need to be generated first
             const fetched = await GetRulesPaginated(currentPage, pageSize, searchTerm);
             if (fetched && fetched.rules) {
                 const displayRules = fetched.rules.map((r: core.Rule) => ({
@@ -47,7 +46,7 @@ export default function Rules() {
                     target: r.pattern, // map pattern -> target for RuleItem
                     name: r.pattern,   // use pattern as name
                     type: r.type === 'BLOCK' ? 'block' : 'allow', // map enum
-                    hits: 0, // Mock
+                    hits: r.hit_count, // Use real hit count from backend
                     category: r.source === 'default' ? 'ads' : 'custom'
                 } as any));
                 setRules(displayRules);
@@ -63,6 +62,13 @@ export default function Rules() {
 
     useEffect(() => {
         fetchRules();
+
+        // Implement 2s auto-refresh
+        const interval = setInterval(() => {
+            fetchRules();
+        }, 2000);
+
+        return () => clearInterval(interval);
     }, [currentPage, searchTerm]); // Refetch when page or search changes
 
     const handleToggleRule = async (id: string) => {

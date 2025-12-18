@@ -63,6 +63,7 @@ export namespace core {
 	    pattern: string;
 	    enabled: boolean;
 	    source: string;
+	    hit_count: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Rule(source);
@@ -75,6 +76,7 @@ export namespace core {
 	        this.pattern = source["pattern"];
 	        this.enabled = source["enabled"];
 	        this.source = source["source"];
+	        this.hit_count = source["hit_count"];
 	    }
 	}
 	export class PaginatedRulesResponse {

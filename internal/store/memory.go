@@ -191,3 +191,9 @@ func (s *MemoryStore) SetSetting(key, value string) error {
 }
 func (s *MemoryStore) DeleteRule(id string) error      { return nil }
 func (s *MemoryStore) UpdateRule(rule core.Rule) error { return nil }
+
+func (s *MemoryStore) IncrementRuleHit(id string, domain string) error {
+	// Not fully implemented for rules in MemoryStore yet as MemoryStore
+	// doesn't actually store/manage rules in the current implementation.
+	return nil
+}

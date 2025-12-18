@@ -22,6 +22,7 @@ type Store interface {
 	GetRulesPaginated(page, pageSize int, search string) ([]core.Rule, int64, error)
 	DeleteRule(id string) error
 	UpdateRule(rule core.Rule) error
+	IncrementRuleHit(id string, domain string) error
 	// Settings
 	GetSetting(key string) (string, error)
 	SetSetting(key, value string) error

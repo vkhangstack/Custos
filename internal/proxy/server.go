@@ -191,6 +191,7 @@ func (r *LoggingRuleSet) Allow(ctx context.Context, req *socks5.Request) (contex
 		// If rule.Pattern == domain ...
 		// Go's filepath.Match is good for globs.
 		if matched, _ := matchDomain(rule.Pattern, domain); matched {
+			r.store.IncrementRuleHit(rule.ID, domain)
 			if rule.Type == core.RuleBlock {
 				r.logBlock(req, domain, string(core.RuleSourceCustom), &core.Process{
 					PID:  procID,
@@ -198,9 +199,7 @@ func (r *LoggingRuleSet) Allow(ctx context.Context, req *socks5.Request) (contex
 				})
 				return ctx, false
 			}
-			// If ALLOW, we stop checking other block rules?
-			// Typically whitelist overrides blacklist.
-			// But here we just proceed.
+			// If ALLOW, we stop checking other block rules
 			break
 		}
 	}

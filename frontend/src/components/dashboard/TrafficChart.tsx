@@ -23,7 +23,7 @@ const TrafficChart = ({ data, timeRange }: TrafficChartProps) => {
                 <h3 className="text-lg font-semibold">{t('dashboard.networkTraffic')}</h3>
                 <Activity size={20} className="text-muted-foreground" />
             </div>
-            <div className="h-[300px] w-full pointer-events-none">
+            <div className="h-[300px] w-full outline-none select-none" tabIndex={-1} onClick={(e) => e.stopPropagation()}>
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={data}>
                         <defs>
@@ -55,6 +55,7 @@ const TrafficChart = ({ data, timeRange }: TrafficChartProps) => {
                             stroke="hsl(var(--muted-foreground))" 
                             tickFormatter={formatBytes} 
                             tick={{ fontSize: 10 }}
+                            padding={{ top: 20 }}
                         />
                         <Tooltip
                             labelFormatter={(label) => {

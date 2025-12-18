@@ -69,10 +69,24 @@
 @layer base {
     * {
         @apply border-border;
+        -webkit-tap-highlight-color: transparent;
+        outline: none !important;
+    }
+
+    *:focus {
+        outline: none !important;
     }
 
     body {
         @apply bg-background text-foreground;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-user-drag: none;
+        overscroll-behavior: none;
+    }
+
+    img {
+        -webkit-user-drag: none;
     }
 }
 

@@ -79,11 +79,12 @@ const (
 
 // Rule represents a filtering rule
 type Rule struct {
-	ID      string   `json:"id"`
-	Type    RuleType `json:"type"`
-	Pattern string   `json:"pattern"` // e.g., "*.ads.com"
-	Enabled bool     `json:"enabled"`
-	Source  RuleType `json:"source"` // "custom" or "default"
+	ID       string   `json:"id"`
+	Type     RuleType `json:"type"`
+	Pattern  string   `json:"pattern"` // e.g., "*.ads.com"
+	Enabled  bool     `json:"enabled"`
+	Source   RuleType `json:"source"`    // "custom" or "default"
+	HitCount int64    `json:"hit_count"` // Number of times triggered
 }
 
 // TrafficStatsModel is the DB model for persistent stats
