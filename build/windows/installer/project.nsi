@@ -101,6 +101,7 @@ Section "uninstall"
     !insertmacro wails.setShellContext
 
     RMDir /r "$AppData\${PRODUCT_EXECUTABLE}" # Remove the WebView2 DataPath
+    RMDir /r "$PROFILE\.custos" # Remove Application Data and Logs
 
     RMDir /r $INSTDIR
 
