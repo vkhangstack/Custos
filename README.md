@@ -1,19 +1,23 @@
-# README
+# <img src="frontend/src/assets/images/logo-universal.png" width="48" height="48" alt="Custos Logo"> Custos
 
-## About
+Custos is a desktop application that acts as a “guardian” for your local network, sitting between your devices and the internet to monitor and filter traffic.
+Built with Go, Wails, and a React/TypeScript frontend, Custos provides a cross‑platform GUI for managing DNS/HTTP filtering rules and observing network activity.
 
-This is the official Wails React-TS template.
+## Features
 
-You can configure the project by editing `wails.json`. More information about the project settings can be found
-here: https://wails.io/docs/reference/project-config
+- **Network Guardian**: Backend implements a local DNS and HTTP proxy that can block or redirect requests based on configurable blocklists.
+- **Malicious Protection**: Helps protect your devices from malicious domains and unwanted endpoints.
+- **Background Operation**: Integrates with the system tray to run in the background while providing quick access to protection status and controls.
+- **Cross-Platform**: Built for Windows and Linux.
 
-## Live Development
+## Development
 
-To run in live development mode, run `wails dev` in the project directory. This will run a Vite development
-server that will provide very fast hot reload of your frontend changes. If you want to develop in a browser
-and have access to your Go methods, there is also a dev server that runs on http://localhost:34115. Connect
-to this in your browser, and you can call your Go code from devtools.
+- **Wails**: Powers the desktop shell.
+- **Vite**: Serves the React/TS frontend in dev mode, enabling hot‑reload.
+- **Run Dev**: `wails dev` in the project directory.
 
-## Building
+## Production
 
-To build a redistributable, production mode package, use `wails build`.
+- **Build**: Production builds are generated with `wails build`.
+- **Packaging**: Packaged for Windows and Linux using platform‑specific scripts and configuration files such as `build.ps1`, `nfpm.yaml`, and `wails.json`.
+
