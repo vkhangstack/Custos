@@ -1,11 +1,13 @@
+import { lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
-import Dashboard from './pages/Dashboard';
-import Traffic from './pages/Traffic';
-import ProxyManager from './pages/ProxyManager';
-import Rules from './pages/Rules';
-import Reports from './pages/Reports';
-import Settings from './pages/Settings';
+
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Traffic = lazy(() => import('./pages/Traffic'));
+const ProxyManager = lazy(() => import('./pages/ProxyManager'));
+const Rules = lazy(() => import('./pages/Rules'));
+const Reports = lazy(() => import('./pages/Reports'));
+const Settings = lazy(() => import('./pages/Settings'));
 
 function App() {
     return (

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Wifi, ArrowUp, ArrowDown, Shield, ShieldAlert } from 'lucide-react';
+import { Wifi, ArrowUp, ArrowDown, Shield, ShieldAlert, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import StatCard from '../components/dashboard/StatCard';
 import TrafficChart from '../components/dashboard/TrafficChart';
@@ -28,7 +28,8 @@ export default function Dashboard() {
     // Real State
     const [stats, setStats] = useState<core.Stats>(new core.Stats());
     const [connections, setConnections] = useState<system.ConnectionInfo[]>([]);
-    const [protectionEnabled, setProtectionEnabled] = useState(false);
+    const [protectionEnabled, setProtectionEnabled] = useState<boolean | null>(null);
+    const [isProtectionLoading, setIsProtectionLoading] = useState(false);
 
     // Refs for rate calculation
     const prevStatsRef = useRef<core.Stats | null>(null);
@@ -108,11 +109,17 @@ export default function Dashboard() {
     }, []);
 
     const toggleProtection = async () => {
+        if (isProtectionLoading || protectionEnabled === null) return;
+        setIsProtectionLoading(true);
         try {
+            // Artificial delay for UX
+            await new Promise(resolve => setTimeout(resolve, 500));
             await EnableProtection(!protectionEnabled);
             setProtectionEnabled(!protectionEnabled);
         } catch (error) {
             console.error("Failed to toggle protection:", error);
+        } finally {
+            setIsProtectionLoading(false);
         }
     };
 
@@ -156,13 +163,25 @@ export default function Dashboard() {
                 <h1 className="text-2xl font-bold">{t('dashboard.title')}</h1>
                 <button
                     onClick={toggleProtection}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${protectionEnabled
-                        ? 'bg-green-500/20 text-green-500 border border-green-500/50 hover:bg-green-500/30'
-                        : 'bg-red-500/20 text-red-500 border border-red-500/50 hover:bg-red-500/30'
-                        } `}
+                    disabled={isProtectionLoading || protectionEnabled === null}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                        protectionEnabled === null
+                            ? 'bg-muted text-muted-foreground border border-muted-foreground/20'
+                            : protectionEnabled
+                            ? 'bg-green-500/20 text-green-500 border border-green-500/50 hover:bg-green-500/30'
+                            : 'bg-red-500/20 text-red-500 border border-red-500/50 hover:bg-red-500/30'
+                    } ${isProtectionLoading || protectionEnabled === null ? 'opacity-50 cursor-not-allowed' : ''} min-w-[180px] justify-center`}
                 >
-                    {protectionEnabled ? <Shield size={20} /> : <ShieldAlert size={20} />}
-                    {protectionEnabled ? t('dashboard.disableProtection') : t('dashboard.enableProtection')}
+                    {isProtectionLoading || protectionEnabled === null ? (
+                        <Loader2 size={20} className="animate-spin" />
+                    ) : (
+                        protectionEnabled ? <Shield size={20} /> : <ShieldAlert size={20} />
+                    )}
+                    {protectionEnabled === null
+                        ? t('Loading...')
+                        : protectionEnabled
+                        ? t('dashboard.disableProtection')
+                        : t('dashboard.enableProtection')}
                 </button>
             </div>
 
