@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/vkhangstack/Custos/internal/system"
@@ -27,10 +29,22 @@ type App struct {
 
 // NewApp creates a new App application struct
 func NewApp() *App {
+	// Resolve log path
+	homeDir, errPath := os.UserHomeDir()
+	if errPath != nil {
+		println("Error getting home directory:", errPath.Error())
+		return nil
+	}
+	dataPath := filepath.Join(homeDir, ".custos", "data")
+	if err := os.MkdirAll(dataPath, 0755); err != nil {
+		println("Error creating data directory:", err.Error())
+		return nil
+	}
+
 	// Try to initialize SQLite store
 	var s store.Store
 	var err error
-	s, err = store.NewSQLiteStore("custos.db")
+	s, err = store.NewSQLiteStore(filepath.Join(dataPath, "custos.db"))
 	if err != nil {
 		fmt.Printf("Failed to initialize SQLite store: %v. Falling back to MemoryStore.\n", err)
 		s = store.NewMemoryStore()

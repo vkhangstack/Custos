@@ -2,6 +2,8 @@ package main
 
 import (
 	"embed"
+	"os"
+	"path/filepath"
 	"runtime"
 
 	"github.com/wailsapp/wails/v2"
@@ -19,6 +21,18 @@ import (
 var assets embed.FS
 
 func main() {
+	// Resolve log path
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		println("Error getting home directory:", err.Error())
+		return
+	}
+	logPath := filepath.Join(homeDir, ".custos", "logs")
+	if err := os.MkdirAll(logPath, 0755); err != nil {
+		println("Error creating log directory:", err.Error())
+		return
+	}
+
 	// Create an instance of the app structure
 	app := NewApp()
 
@@ -44,7 +58,7 @@ func main() {
 		// do something
 	})
 	// Create application with options
-	err := wails.Run(&options.App{
+	err = wails.Run(&options.App{
 		Title:             "custos",
 		Width:             1024,
 		Height:            768,
@@ -65,7 +79,7 @@ func main() {
 		},
 		LogLevel:           logger.DEBUG,
 		LogLevelProduction: logger.WARNING,
-		Logger:             logger.NewFileLogger("application-logs.txt"),
+		Logger:             logger.NewFileLogger(filepath.Join(logPath, "app.log")),
 		StartHidden:        false,
 		Bind: []interface{}{
 			app,
