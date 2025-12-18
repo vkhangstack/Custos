@@ -5,7 +5,7 @@ import { formatBytes } from '../../utils/formatting';
 
 interface TrafficData {
     name: string;
-    timestamp: string; // ISO string from backend
+    timestamp: string | number; // Support both ISO string (time.Time) and Unix Milli
     upload: number;
     download: number;
 }

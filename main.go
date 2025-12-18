@@ -65,7 +65,7 @@ func main() {
 		rt.EventsEmit(app.ctx, "navigate-to", "/opensource")
 	})
 	AboutMenu.AddText("Reset Data", keys.Combo("c", keys.CmdOrCtrlKey, keys.ShiftKey), func(_ *menu.CallbackData) {
-		app.store.ResetStats()
+		app.store.ResetData()
 		rt.MessageDialog(app.ctx, rt.MessageDialogOptions{
 			Type:          rt.InfoDialog,
 			Title:         "Reset Data",

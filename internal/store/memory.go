@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/vkhangstack/Custos/internal/core"
+	"github.com/vkhangstack/Custos/internal/utils"
 )
 
 // MemoryStore holds logs and stats in memory
@@ -32,6 +33,11 @@ func NewMemoryStore() *MemoryStore {
 func (s *MemoryStore) AddLog(entry core.LogEntry) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	// Ensure ID is set
+	if entry.ID == "" {
+		entry.ID = utils.GenerateIDString()
+	}
 
 	// Add to logs (circular buffer logic simplified)
 	if len(s.logs) >= s.maxLogs {
@@ -62,15 +68,51 @@ func (s *MemoryStore) UpdateLog(entry core.LogEntry) {
 
 	for i, log := range s.logs {
 		if log.ID == entry.ID {
-			s.logs[i] = entry
-			// We DO NOT update global stats here to avoid double counting
-			// Use AddTraffic for specific increments
+			// Merge fields from entry into s.logs[i]
+			if !entry.Timestamp.IsZero() {
+				s.logs[i].Timestamp = entry.Timestamp
+			}
+			if entry.Type != "" {
+				s.logs[i].Type = entry.Type
+			}
+			if entry.Domain != "" {
+				s.logs[i].Domain = entry.Domain
+			}
+			if entry.SrcIP != "" {
+				s.logs[i].SrcIP = entry.SrcIP
+			}
+			if entry.DstIP != "" {
+				s.logs[i].DstIP = entry.DstIP
+			}
+			if entry.DstPort != 0 {
+				s.logs[i].DstPort = entry.DstPort
+			}
+			if entry.Protocol != "" {
+				s.logs[i].Protocol = entry.Protocol
+			}
+			if entry.ProcessName != "" {
+				s.logs[i].ProcessName = entry.ProcessName
+			}
+			if entry.ProcessID != 0 {
+				s.logs[i].ProcessID = entry.ProcessID
+			}
+			if entry.BytesSent != 0 {
+				s.logs[i].BytesSent = entry.BytesSent
+			}
+			if entry.BytesRecv != 0 {
+				s.logs[i].BytesRecv = entry.BytesRecv
+			}
+			if entry.Status != "" {
+				s.logs[i].Status = entry.Status
+			}
+			if entry.Latency != 0 {
+				s.logs[i].Latency = entry.Latency
+			}
 
-			// Notify subscribers of update?
-			// Maybe, but usually we just notify on new logs for the "Live Logs" feed.
-			// Let's notify anyway so UI updates if it's smart enough.
+			// Notify subscribers of update with full entry
+			updatedEntry := s.logs[i]
 			for _, sub := range s.subscribers {
-				go sub(entry)
+				go sub(updatedEntry)
 			}
 			return
 		}
@@ -106,7 +148,9 @@ func (s *MemoryStore) GetRecentLogs(limit int) []core.LogEntry {
 func (s *MemoryStore) GetStats() core.Stats {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.stats
+	stats := s.stats
+	stats.Timestamp = time.Now()
+	return stats
 }
 
 // GetTrafficHistory returns (empty/dummy) traffic history for memory store
@@ -123,8 +167,8 @@ func (s *MemoryStore) Subscribe(callback func(core.LogEntry)) {
 	s.subscribers = append(s.subscribers, callback)
 }
 
-// ResetStats resets stats
-func (s *MemoryStore) ResetStats() {
+// ResetData resets data
+func (s *MemoryStore) ResetData() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.stats = core.Stats{

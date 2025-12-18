@@ -10,6 +10,7 @@ import (
 	"github.com/vkhangstack/Custos/internal/core"
 	"github.com/vkhangstack/Custos/internal/store"
 	"github.com/vkhangstack/Custos/internal/system"
+	"github.com/vkhangstack/Custos/internal/utils"
 
 	"github.com/armon/go-socks5"
 )
@@ -144,7 +145,7 @@ func (r *LoggingRuleSet) Allow(ctx context.Context, req *socks5.Request) (contex
 
 	// Whitelist Localhost/Loopback
 	// Always allow local traffic to bypass protection and blocks
-	if domain == "localhost" || req.DestAddr.IP.IsLoopback() {
+	if domain == core.ProtocolLocalhost || req.DestAddr.IP.IsLoopback() {
 		return ctx, true
 	}
 
@@ -159,7 +160,7 @@ func (r *LoggingRuleSet) Allow(ctx context.Context, req *socks5.Request) (contex
 	// Check Protection Mode (Block HTTP Port 80)
 	if r.server.protectionEnabled {
 		if req.DestAddr.Port == 80 {
-			r.logBlock(req, domain, "protection_http_blocked", &core.Process{
+			r.logBlock(req, domain, string(core.RuleSourceProtocolHttpBlocked), &core.Process{
 				PID:  procID,
 				Name: procName,
 			})
@@ -170,7 +171,7 @@ func (r *LoggingRuleSet) Allow(ctx context.Context, req *socks5.Request) (contex
 
 	// Check Blocklist
 	if r.blocklist.IsBlocked(domain) {
-		r.logBlock(req, domain, "blocklist", &core.Process{
+		r.logBlock(req, domain, string(core.RuleSourceBlocklist), &core.Process{
 			PID:  procID,
 			Name: procName,
 		})
@@ -191,7 +192,7 @@ func (r *LoggingRuleSet) Allow(ctx context.Context, req *socks5.Request) (contex
 		// Go's filepath.Match is good for globs.
 		if matched, _ := matchDomain(rule.Pattern, domain); matched {
 			if rule.Type == core.RuleBlock {
-				r.logBlock(req, domain, "custom_rule", &core.Process{
+				r.logBlock(req, domain, string(core.RuleSourceCustom), &core.Process{
 					PID:  procID,
 					Name: procName,
 				})
@@ -211,16 +212,17 @@ func (r *LoggingRuleSet) Allow(ctx context.Context, req *socks5.Request) (contex
 	destIP := req.DestAddr.IP.String()
 
 	entry := core.LogEntry{
-		ID:          fmt.Sprintf("%d", time.Now().UnixNano()), // Simple ID
+		ID:          utils.GenerateIDString(),
 		Timestamp:   time.Now(),
-		Type:        "proxy",
+		Type:        core.LogSourceProxy,
 		Domain:      domain, // Could be empty if IP
 		DstIP:       destIP,
 		DstPort:     req.DestAddr.Port,
-		Protocol:    "tcp", // SOCKS5 is usually TCP
+		SrcIP:       req.RemoteAddr.IP.String(),
+		Protocol:    core.ProtocolTCP,
 		ProcessName: procName,
 		ProcessID:   procID,
-		Status:      "allowed",
+		Status:      core.LogStatusAllowed,
 	}
 
 	r.store.AddLog(entry)
@@ -245,14 +247,15 @@ func matchDomain(pattern, domain string) (bool, error) {
 
 func (r *LoggingRuleSet) logBlock(req *socks5.Request, domain string, reason string, process *core.Process) {
 	entry := core.LogEntry{
-		ID:          fmt.Sprintf("%d", time.Now().UnixNano()),
+		ID:          utils.GenerateIDString(),
 		Timestamp:   time.Now(),
-		Type:        "proxy",
+		Type:        core.LogSourceProxy,
 		DstIP:       req.DestAddr.IP.String(),
 		DstPort:     req.DestAddr.Port,
+		SrcIP:       req.RemoteAddr.IP.String(),
 		Domain:      domain,
-		Protocol:    "tcp",
-		Status:      "blocked", // or "blocked:" + reason
+		Protocol:    core.ProtocolTCP,
+		Status:      core.LogStatusBlocked,
 		BytesSent:   0,
 		BytesRecv:   0,
 		ProcessName: process.Name,

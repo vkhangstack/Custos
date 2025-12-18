@@ -7,6 +7,7 @@ import (
 
 	"github.com/vkhangstack/Custos/internal/core"
 	"github.com/vkhangstack/Custos/internal/store"
+	"github.com/vkhangstack/Custos/internal/utils"
 
 	"github.com/miekg/dns"
 )
@@ -62,13 +63,15 @@ func (s *Server) handleRequest(w dns.ResponseWriter, r *dns.Msg) {
 	if s.blocklist.IsBlocked(q.Name) {
 		// Log blocked
 		entry := core.LogEntry{
-			ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
+			ID:        utils.GenerateIDString(),
 			Timestamp: time.Now(),
 			Type:      "dns",
 			Domain:    q.Name,
 			SrcIP:     w.RemoteAddr().String(),
 			Protocol:  "udp",
 			Status:    "blocked",
+			BytesSent: 0,
+			BytesRecv: 0,
 		}
 		s.store.AddLog(entry)
 
@@ -91,7 +94,7 @@ func (s *Server) handleRequest(w dns.ResponseWriter, r *dns.Msg) {
 
 	// Log allowed
 	entry := core.LogEntry{
-		ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
+		ID:        utils.GenerateIDString(),
 		Timestamp: time.Now(),
 		Type:      "dns",
 		Domain:    q.Name,

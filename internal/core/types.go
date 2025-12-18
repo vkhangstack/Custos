@@ -2,11 +2,38 @@ package core
 
 import "time"
 
+const (
+	ProtocolTCP       string = "tcp"
+	ProtocolUDP       string = "udp"
+	ProtocolHTTP      string = "http"
+	ProtocolHTTPS     string = "https"
+	ProtocolLocalhost string = "localhost"
+)
+const (
+	RuleSourceBlocklist            RuleType = "blocklist"
+	RuleSourceProtocolHttpBlocked  RuleType = "protection_http_blocked"
+	RuleSourceProtocolHttpsBlocked RuleType = "protection_https_blocked"
+	RuleSourceProtocolHttpAllowed  RuleType = "protection_http_allowed"
+	RuleSourceProtocolHttpsAllowed RuleType = "protection_https_allowed"
+)
+
+const (
+	LogSourceProxy  string = "proxy"
+	LogSourceDNS    string = "dns"
+	LogSourceSystem string = "system"
+)
+
+const (
+	LogStatusAllowed string = "allowed"
+	LogStatusBlocked string = "blocked"
+	LogStatusError   string = "error"
+)
+
 // LogEntry represents a single traffic event
 type LogEntry struct {
 	ID          string    `json:"id"`
-	Timestamp   time.Time `json:"timestamp"`
-	Type        string    `json:"type"` // "dns", "proxy", "system"
+	Timestamp   time.Time `json:"timestamp"` // Unix Milli
+	Type        string    `json:"type"`      // "dns", "proxy", "system"
 	Domain      string    `json:"domain"`
 	SrcIP       string    `json:"src_ip"`
 	DstIP       string    `json:"dst_ip"`
@@ -26,13 +53,13 @@ type Stats struct {
 	TotalDownload int64            `json:"total_download"`
 	ActiveConns   int              `json:"active_connections"`
 	TopDomains    map[string]int64 `json:"top_domains"`
-	Timestamp     time.Time        `json:"timestamp"`
+	Timestamp     time.Time        `json:"timestamp"` // Unix Milli
 }
 
 // TrafficDataPoint represents a point in the traffic chart
 type TrafficDataPoint struct {
 	Name      string    `json:"name"`      // Time label (e.g., "10:00")
-	Timestamp time.Time `json:"timestamp"` // Raw timestamp for sorting/charts
+	Timestamp time.Time `json:"timestamp"` // Time of data point
 	Upload    int64     `json:"upload"`    // Bytes sent
 	Download  int64     `json:"download"`  // Bytes received
 }
@@ -61,10 +88,10 @@ type Rule struct {
 
 // TrafficStatsModel is the DB model for persistent stats
 type TrafficStatsModel struct {
-	ID            string `gorm:"primaryKey"`
-	TotalUpload   int64
-	TotalDownload int64
-	Timestamp     time.Time
+	ID            string    `gorm:"primaryKey" json:"id"`
+	TotalUpload   int64     `json:"total_upload"`
+	TotalDownload int64     `json:"total_download"`
+	Timestamp     time.Time `json:"timestamp"` // Last update time
 }
 
 // PaginatedRulesResponse wraps rules and total count

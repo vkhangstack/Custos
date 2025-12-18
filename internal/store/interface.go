@@ -15,7 +15,7 @@ type Store interface {
 	GetRecentLogs(limit int) []core.LogEntry
 	GetStats() core.Stats
 	Subscribe(callback func(core.LogEntry))
-	ResetStats()
+	ResetData()
 	// Rule Management
 	AddRule(rule core.Rule) error
 	GetRules() []core.Rule

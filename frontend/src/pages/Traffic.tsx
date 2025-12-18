@@ -24,6 +24,8 @@ export default function Traffic() {
                 GetStats(),
                 GetSystemConnections()
             ]);
+        console.log("Refreshing data...", fetchedLogs);
+
             setLogs(fetchedLogs || []);
             setStats(fetchedStats || new core.Stats());
             setConnections(fetchedConns || []);

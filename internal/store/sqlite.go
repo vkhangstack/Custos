@@ -11,6 +11,7 @@ import (
 
 	"github.com/glebarez/sqlite"
 	"github.com/vkhangstack/Custos/internal/core"
+	"github.com/vkhangstack/Custos/internal/utils"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -86,7 +87,7 @@ func (s *SQLiteStore) AddLog(entry core.LogEntry) {
 
 	// Ensure ID is set
 	if entry.ID == "" {
-		entry.ID = time.Now().String() // Simple fallback
+		entry.ID = utils.GenerateIDString() // Fallback ID
 	}
 
 	// Use Transaction to ensure Log and Stats are in sync
@@ -269,12 +270,6 @@ func (s *SQLiteStore) GetTrafficHistory(duration time.Duration) []core.TrafficDa
 		// Let's send full timestamp object.
 
 		t, err := time.ParseInLocation("2006-01-02 15:04", bucketStr, time.Local)
-		if err != nil {
-			// Try hour format if that fails? Or just adjust query to be simpler.
-			// If we group by Hour, format is "%Y-%m-%d %H:00" which still fits "2006-01-02 15:04" pattern!
-			// So one parse layout works for both minute and hour if minutes are 00.
-		}
-
 		if err == nil {
 			p.Timestamp = t
 			p.Name = t.Format("15:04") // Default label, frontend can override
@@ -290,7 +285,7 @@ func (s *SQLiteStore) GetTrafficHistory(duration time.Duration) []core.TrafficDa
 }
 
 // Subscribe adds a listener
-func (s *SQLiteStore) ResetStats() {
+func (s *SQLiteStore) ResetData() {
 	// Use Exec for direct deletion to bypass GORM's global delete protection if enabled
 	// and to ensure efficient clearing.
 	s.db.Exec("DELETE FROM traffic_stats_models WHERE id = ?", "global")
@@ -457,7 +452,7 @@ func (s *SQLiteStore) seedDefaultRules() {
 			existingRules[domain] = true
 
 			rules = append(rules, core.Rule{
-				ID:      fmt.Sprintf("seed-%d", time.Now().UnixNano()+int64(len(rules))),
+				ID:      utils.GenerateIDString(),
 				Type:    core.RuleBlock,
 				Pattern: domain,
 				Enabled: true,

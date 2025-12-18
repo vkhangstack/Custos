@@ -19,6 +19,7 @@ import (
 	"github.com/vkhangstack/Custos/internal/dns"
 
 	"github.com/vkhangstack/Custos/internal/core"
+	"github.com/vkhangstack/Custos/internal/utils"
 )
 
 // App struct
@@ -191,7 +192,7 @@ func (a *App) GetChartData(durationStr string) []core.TrafficDataPoint {
 // AddRule adds a new rule
 func (a *App) AddRule(pattern string, ruleType string) error {
 	rule := core.Rule{
-		ID:      fmt.Sprintf("%d", time.Now().UnixNano()),
+		ID:      utils.GenerateIDString(),
 		Pattern: pattern,
 		Type:    core.RuleType(ruleType),
 		Enabled: true,

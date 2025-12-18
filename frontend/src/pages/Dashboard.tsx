@@ -9,19 +9,6 @@ import { core, system } from '../../wailsjs/go/models';
 import { formatBytes } from '../utils/formatting';
 import { useToast } from '../context/ToastContext';
 
-const generateMockChartData = () => {
-    // Keep mock chart data for now as GetStats doesn't return historical data series yet
-    // Future improvement: Backend should provide historical stats
-    const data = [];
-    for (let i = 0; i < 20; i++) {
-        data.push({
-            name: i.toString(),
-            upload: Math.floor(Math.random() * 500) + 100,
-            download: Math.floor(Math.random() * 1000) + 200,
-        });
-    }
-    return data;
-};
 
 export default function Dashboard() {
     const { t } = useTranslation();
@@ -52,18 +39,19 @@ export default function Dashboard() {
             // Calculate live rate for the chart (append to history)
             setChartData(prevData => {
                 const now = new Date();
-                const timeLabel = now.getHours() + ':' + now.getMinutes().toString().padStart(2, '0') + ':' + now.getSeconds().toString().padStart(2, '0');
-                // Note: Chart history from backend is per minute (%H:%M). Live update is per 2s.
-                // This mismatch might look weird (minute bars vs second bars).
-                // Ideally backend history should match frontend granularity OR frontend should aggregate.
-                // For now, let's just append.
+                const timeLabel = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
 
                 let uploadRate = 0;
                 let downloadRate = 0;
 
                 if (prevStatsRef.current) {
-                    uploadRate = currentStats.total_upload - prevStatsRef.current.total_upload;
-                    downloadRate = currentStats.total_download - prevStatsRef.current.total_download;
+                    const up = currentStats.total_upload || 0;
+                    const down = currentStats.total_download || 0;
+                    const prevUp = prevStatsRef.current.total_upload || 0;
+                    const prevDown = prevStatsRef.current.total_download || 0;
+                    
+                    uploadRate = up - prevUp;
+                    downloadRate = down - prevDown;
                 }
 
                 // Prevent negative spikes if stats reset
@@ -71,10 +59,6 @@ export default function Dashboard() {
                 if (downloadRate < 0) downloadRate = 0;
 
                 const newData = [...prevData];
-                // Only append if it's a new point logic, or simple append
-                // With 24h view, appending every 2s might look crowded if we don't aggregate.
-                // But for simplicity, we just append.
-                
                 newData.push({
                     name: timeLabel,
                     timestamp: now.toISOString(),
@@ -82,9 +66,6 @@ export default function Dashboard() {
                     download: downloadRate,
                 });
 
-                // Limit points based on range to avoid memory leak? 
-                // Or let chart handle it? 
-                // Let's cap at some reasonable number if needed, but GetChartData returns full history.
                 return newData;
             });
 
