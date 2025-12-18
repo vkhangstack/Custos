@@ -9,6 +9,7 @@ import (
 
 	"github.com/vkhangstack/Custos/internal/core"
 	"github.com/vkhangstack/Custos/internal/store"
+	"github.com/vkhangstack/Custos/internal/system"
 
 	"github.com/armon/go-socks5"
 )
@@ -19,6 +20,7 @@ import (
 type Server struct {
 	store             store.Store
 	blocklist         *core.BlocklistManager
+	systemTracker     *system.Tracker
 	socksServer       *socks5.Server
 	port              int
 	running           bool
@@ -27,11 +29,12 @@ type Server struct {
 }
 
 // NewServer creates a new proxy server
-func NewServer(store store.Store, blocklist *core.BlocklistManager, port int) *Server {
+func NewServer(store store.Store, blocklist *core.BlocklistManager, systemTracker *system.Tracker, port int) *Server {
 	return &Server{
-		store:     store,
-		blocklist: blocklist,
-		port:      port,
+		store:         store,
+		blocklist:     blocklist,
+		systemTracker: systemTracker,
+		port:          port,
 	}
 }
 
@@ -132,10 +135,21 @@ func (r *LoggingRuleSet) Allow(ctx context.Context, req *socks5.Request) (contex
 		return ctx, true
 	}
 
+	// Resolve Process Name
+	procName := "unknown"
+	procID := int32(0)
+	// req.RemoteAddr is *socks5.AddrSpec in this library version
+	if r.server.systemTracker != nil && req.RemoteAddr != nil {
+		procName, procID = r.server.systemTracker.GetProcessFromPort(req.RemoteAddr.Port)
+	}
+
 	// Check Protection Mode (Block HTTP Port 80)
 	if r.server.protectionEnabled {
 		if req.DestAddr.Port == 80 {
-			r.logBlock(req, domain, "protection_http_blocked")
+			r.logBlock(req, domain, "protection_http_blocked", &core.Process{
+				PID:  procID,
+				Name: procName,
+			})
 			log.Printf("Blocked HTTP request to %s (Port 80) due to active protection", domain)
 			return ctx, false
 		}
@@ -143,7 +157,10 @@ func (r *LoggingRuleSet) Allow(ctx context.Context, req *socks5.Request) (contex
 
 	// Check Blocklist
 	if r.blocklist.IsBlocked(domain) {
-		r.logBlock(req, domain, "blocklist")
+		r.logBlock(req, domain, "blocklist", &core.Process{
+			PID:  procID,
+			Name: procName,
+		})
 		return ctx, false
 	}
 
@@ -161,7 +178,10 @@ func (r *LoggingRuleSet) Allow(ctx context.Context, req *socks5.Request) (contex
 		// Go's filepath.Match is good for globs.
 		if matched, _ := matchDomain(rule.Pattern, domain); matched {
 			if rule.Type == core.RuleBlock {
-				r.logBlock(req, domain, "custom_rule")
+				r.logBlock(req, domain, "custom_rule", &core.Process{
+					PID:  procID,
+					Name: procName,
+				})
 				return ctx, false
 			}
 			// If ALLOW, we stop checking other block rules?
@@ -176,8 +196,6 @@ func (r *LoggingRuleSet) Allow(ctx context.Context, req *socks5.Request) (contex
 	// Log the connection attempt
 	// Define variables
 	destIP := req.DestAddr.IP.String()
-	procName := "custos" // Placeholder, would need SystemTracker integration
-	procID := int32(0)
 
 	entry := core.LogEntry{
 		ID:          fmt.Sprintf("%d", time.Now().UnixNano()), // Simple ID
@@ -212,18 +230,20 @@ func matchDomain(pattern, domain string) (bool, error) {
 	return pattern == domain, nil
 }
 
-func (r *LoggingRuleSet) logBlock(req *socks5.Request, domain string, reason string) {
+func (r *LoggingRuleSet) logBlock(req *socks5.Request, domain string, reason string, process *core.Process) {
 	entry := core.LogEntry{
-		ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
-		Timestamp: time.Now(),
-		Type:      "proxy",
-		DstIP:     req.DestAddr.IP.String(),
-		DstPort:   req.DestAddr.Port,
-		Domain:    domain,
-		Protocol:  "tcp",
-		Status:    "blocked", // or "blocked:" + reason
-		BytesSent: 0,
-		BytesRecv: 0,
+		ID:          fmt.Sprintf("%d", time.Now().UnixNano()),
+		Timestamp:   time.Now(),
+		Type:        "proxy",
+		DstIP:       req.DestAddr.IP.String(),
+		DstPort:     req.DestAddr.Port,
+		Domain:      domain,
+		Protocol:    "tcp",
+		Status:      "blocked", // or "blocked:" + reason
+		BytesSent:   0,
+		BytesRecv:   0,
+		ProcessName: process.Name,
+		ProcessID:   process.PID,
 	}
 	r.store.AddLog(entry)
 }

@@ -41,11 +41,13 @@ func NewApp() *App {
 	// Load blocklist in background
 	go bm.Load()
 
+	systemTracker := system.NewTracker()
+
 	return &App{
 		store:         s,
-		proxyServer:   proxy.NewServer(s, bm, 1080),
+		proxyServer:   proxy.NewServer(s, bm, systemTracker, 1080),
 		dnsServer:     dns.NewServer(s, bm, 5353),
-		systemTracker: system.NewTracker(),
+		systemTracker: systemTracker,
 	}
 }
 
@@ -59,13 +61,17 @@ func (a *App) startup(ctx context.Context) {
 	// a.dnsServer.Start()
 
 	// Auto-enable system proxy
-	if err := a.SetSystemProxy(true); err != nil {
-		fmt.Printf("Failed to set system proxy on startup: %v\n", err)
-	}
+	// if err := a.SetSystemProxy(true); err != nil {
+	// 	fmt.Printf("Failed to set system proxy on startup: %v\n", err)
+	// }
 
 	// Restore Protection State
 	if enabled := a.GetProtectionStatus(); enabled {
 		a.proxyServer.SetProtection(true)
+		a.SetSystemProxy(true)
+	} else {
+		a.proxyServer.SetProtection(false)
+		a.SetSystemProxy(false)
 	}
 
 	// Start a ticker to emit logs to frontend
@@ -119,7 +125,7 @@ func (a *App) SetSystemProxy(enabled bool) error {
 
 // EnableProtection toggles HTTP blocking
 func (a *App) EnableProtection(enabled bool) {
-	a.proxyServer.SetProtection(enabled)
+	a.SetSystemProxy(enabled)
 	// Persist
 	val := "false"
 	if enabled {

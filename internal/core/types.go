@@ -75,3 +75,8 @@ type AppSetting struct {
 	Key   string `gorm:"primaryKey" json:"key"`
 	Value string `json:"value"`
 }
+
+type Process struct {
+	PID  int32  `json:"pid"`
+	Name string `json:"name"`
+}

@@ -2,6 +2,7 @@ package system
 
 import (
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/shirou/gopsutil/v4/net"
@@ -38,6 +39,8 @@ func (t *Tracker) GetProcessName(pid int32) string {
 	}
 
 	t.mu.RLock()
+	// Cache invalidation logic could be added here (e.g. check if PID is reused)
+	// For now, let's just rely on simple map
 	if name, ok := t.processCache[pid]; ok {
 		t.mu.RUnlock()
 		return name
@@ -60,10 +63,38 @@ func (t *Tracker) GetProcessName(pid int32) string {
 	return name
 }
 
+// GetProcessFromPort attempts to identify the process owning a local port
+// This is used to identify the source of a connection to the proxy
+func (t *Tracker) GetProcessFromPort(port int) (string, int32) {
+	// 1. Get all TCP connections
+	conns, err := net.Connections("tcp")
+	if err != nil {
+		log.Printf("[Tracker] Error getting connections: %v", err)
+		return "unknown", 0
+	}
+
+	log.Printf("[Tracker] Searching for process on port %d. Found %d active TCP connections.", port, len(conns))
+
+	// 2. Find the connection where Laddr.Port matches our target port
+	for _, conn := range conns {
+		if int(conn.Laddr.Port) == port {
+			// Found it!
+			pid := conn.Pid
+			name := t.GetProcessName(pid)
+			log.Printf("[Tracker] Found match! Port %d -> PID %d (%s)", port, pid, name)
+			return name, pid
+		}
+	}
+
+	log.Printf("[Tracker] No process found for port %d", port)
+	return "unknown", 0
+}
+
 // GetActiveConnections returns a list of current network connections
 func (t *Tracker) GetActiveConnections() ([]ConnectionInfo, error) {
 	conns, err := net.Connections("all")
 	if err != nil {
+		log.Printf("Error getting active connections: %v", err)
 		return nil, err
 	}
 

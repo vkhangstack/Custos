@@ -9,9 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/glebarez/sqlite"
 	"github.com/vkhangstack/Custos/internal/core"
-
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )

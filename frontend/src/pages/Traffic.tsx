@@ -152,7 +152,7 @@ export default function Traffic() {
                                 {activeTab === 'logs' ? (
                                     <>
                                         <th className="p-4 font-medium text-muted-foreground">Time</th>
-                                        {/* <th className="p-4 font-medium text-muted-foreground">Process</th> */}
+                                        <th className="p-4 font-medium text-muted-foreground">Process</th>
                                         <th className="p-4 font-medium text-muted-foreground">Domain / IP</th>
                                         <th className="p-4 font-medium text-muted-foreground">Type</th>
                                         <th className="p-4 font-medium text-muted-foreground">Protocol</th>
@@ -179,10 +179,10 @@ export default function Traffic() {
                                             <td className="p-4 text-muted-foreground whitespace-nowrap">
                                                 {new Date(log.timestamp).toLocaleTimeString()}
                                             </td>
-                                            {/* <td className="p-4 font-medium text-foreground">
+                                            <td className="p-4 font-medium text-foreground">
                                                 {log.process_name || '-'}
                                                 {log.process_id ? <span className="text-xs text-muted-foreground ml-1">({log.process_id})</span> : ''}
-                                            </td> */}
+                                            </td>
                                             <td className="p-4 text-foreground font-mono text-xs min-w-[200px]">
                                                 <div className="font-medium text-sm mb-0.5">{log.domain || '-'}</div>
                                                 <div className="text-muted-foreground">{log.dst_ip}:{log.dst_port}</div>

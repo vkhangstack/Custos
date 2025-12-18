@@ -26,3 +26,10 @@ type Store interface {
 	GetSetting(key string) (string, error)
 	SetSetting(key, value string) error
 }
+
+type Cache interface {
+	Add(key string, value interface{}) error
+	Get(key string) (interface{}, error)
+	Delete(key string) error
+	Clear()
+}
