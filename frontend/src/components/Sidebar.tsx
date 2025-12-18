@@ -77,10 +77,10 @@ const Sidebar = () => {
                     {!isCollapsed && <span>{i18n.language === 'en' ? 'EN' : 'VI'}</span>}
                 </button>
 
-                {!isCollapsed ? (
+                {!isCollapsed ? (   
                     <>
                         <div className="flex justify-between items-center mb-1">
-                            <span className="font-semibold text-foreground">{config?.name}</span>
+                            {/* <span className="font-semibold text-foreground">{config?.name}</span> */}
                             <span className="bg-accent px-1.5 py-0.5 rounded text-xs text-accent-foreground">{config?.version}</span>
                         </div>
                         {/* <div className="text-xs">{t('sidebar.author')}: {config.appAuthor}</div> */}
