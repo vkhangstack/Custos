@@ -20,7 +20,12 @@ import (
 
 	"github.com/vkhangstack/Custos/internal/core"
 	"github.com/vkhangstack/Custos/internal/utils"
+
+	_ "embed"
 )
+
+//go:embed app.json
+var appJson []byte
 
 // App struct
 type App struct {
@@ -260,16 +265,14 @@ type AppInfo struct {
 
 // GetAppInfo returns application information
 func (a *App) GetAppInfo() *AppInfo {
-	appFile, err := os.Open("app.json")
-
-	if err != nil {
-		log.Fatal(err)
-	}
-	jsonParser := json.NewDecoder(appFile)
-
 	var appInfo AppInfo
-	if err = jsonParser.Decode(&appInfo); err != nil {
-		log.Fatal(err)
+	err := json.Unmarshal(appJson, &appInfo)
+	if err != nil {
+		fmt.Printf("Error decoding embedded app.json: %v\n", err)
+		return &AppInfo{
+			Name:    "Custos",
+			Version: "Unknown",
+		}
 	}
 	return &appInfo
 }
