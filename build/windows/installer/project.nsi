@@ -100,6 +100,10 @@ SectionEnd
 Section "uninstall"
     !insertmacro wails.setShellContext
 
+    DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Custos"
+    
+    RMDir /r InstallDir
+
     RMDir /r "$AppData\${PRODUCT_EXECUTABLE}" # Remove the WebView2 DataPath
     RMDir /r "$PROFILE\.custos" # Remove Application Data and Logs
 
