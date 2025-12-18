@@ -7,6 +7,7 @@ import { GetAppInfo } from '../../wailsjs/go/main/App'
 
 const Sidebar = () => {
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const [config, setConfig] = useState(APP_CONFIG);
     const { t, i18n } = useTranslation();
 
     const toggleLanguage = () => {
@@ -29,6 +30,7 @@ const Sidebar = () => {
             APP_CONFIG.appName = appInfo.name;
             APP_CONFIG.appVersion = appInfo.version;
             APP_CONFIG.appAuthor = appInfo.author;
+            setConfig({ ...APP_CONFIG });
         };
         init();
     }, []);
@@ -37,7 +39,7 @@ const Sidebar = () => {
         <div className={`flex flex-col h-screen bg-card border-r border-border text-card-foreground shadow-xl transition-[width] duration-300 ease-in-out shrink-0 ${isCollapsed ? 'w-20' : 'w-64'}`}>
             {/* Header */}
             <div className={`h-16 flex items-center justify-between px-6 border-b border-border ${isCollapsed ? 'justify-center p-0' : ''}`}>
-                {!isCollapsed && <h2 className="text-xl font-semibold whitespace-nowrap overflow-hidden text-primary">{APP_CONFIG.appName.split(' ')[0]}</h2>}
+                {!isCollapsed && <h2 className="text-xl font-semibold whitespace-nowrap overflow-hidden text-primary">{config.appName.split(' ')[0]}</h2>}
                 <button
                     className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                     onClick={() => setIsCollapsed(!isCollapsed)}
@@ -79,14 +81,14 @@ const Sidebar = () => {
                 {!isCollapsed ? (
                     <>
                         <div className="flex justify-between items-center mb-1">
-                            <span className="font-semibold text-foreground">{APP_CONFIG.appName}</span>
-                            <span className="bg-accent px-1.5 py-0.5 rounded text-xs text-accent-foreground">{APP_CONFIG.appVersion}</span>
+                            <span className="font-semibold text-foreground">{config.appName}</span>
+                            <span className="bg-accent px-1.5 py-0.5 rounded text-xs text-accent-foreground">{config.appVersion}</span>
                         </div>
-                        <div className="text-xs">{t('sidebar.author')}: {APP_CONFIG.appAuthor}</div>
+                        <div className="text-xs">{t('sidebar.author')}: {config.appAuthor}</div>
                     </>
                 ) : (
                     <div className="text-xs">
-                        <span className="block mb-1">{APP_CONFIG.appVersion}</span>
+                        <span className="block mb-1">{config.appVersion}</span>
                     </div>
                 )}
             </div>
