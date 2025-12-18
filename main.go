@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/logger"
@@ -42,9 +43,9 @@ func main() {
 		AppMenu.Append(menu.AppMenu()) // On macOS platform, this must be done right after `NewMenu()`
 	}
 	FileMenu := AppMenu.AddSubmenu("File")
-	FileMenu.AddText("Open", keys.CmdOrCtrl("o"), func(_ *menu.CallbackData) {
-		// do something
-	})
+	// FileMenu.AddText("Open", keys.CmdOrCtrl("o"), func(_ *menu.CallbackData) {
+	// 	// do something
+	// })
 	FileMenu.AddSeparator()
 	FileMenu.AddText("Quit", keys.CmdOrCtrl("q"), func(_ *menu.CallbackData) {
 		// `rt` is an alias of "github.com/wailsapp/wails/v2/pkg/runtime" to prevent collision with standard package
@@ -67,7 +68,7 @@ func main() {
 	})
 	// Create application with options
 	err = wails.Run(&options.App{
-		Title:             "custos",
+		Title:             strings.ToLower(app.GetAppInfo().Name),
 		Width:             1024,
 		Height:            768,
 		AlwaysOnTop:       false,
@@ -82,7 +83,7 @@ func main() {
 		Menu:             AppMenu,
 		Linux: &linux.Options{
 			Icon:             []byte("frontend/src/assets/images/logo-universal.png"),
-			ProgramName:      "custos",
+			ProgramName:      strings.ToLower(app.GetAppInfo().Name),
 			WebviewGpuPolicy: linux.WebviewGpuPolicyAlways,
 		},
 		LogLevel:           logger.DEBUG,

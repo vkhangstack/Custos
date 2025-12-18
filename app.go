@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -235,11 +237,17 @@ type AppInfo struct {
 }
 
 // GetAppInfo returns application information
-func (a *App) GetAppInfo() AppInfo {
-	return AppInfo{
-		Name:        "Custos",
-		Version:     "1.0.0",
-		Description: "A modern application for monitoring and traffic analysis.",
-		Author:      "vkhangstack",
+func (a *App) GetAppInfo() *AppInfo {
+	appFile, err := os.Open("app.json")
+
+	if err != nil {
+		log.Fatal(err)
 	}
+	jsonParser := json.NewDecoder(appFile)
+
+	var appInfo AppInfo
+	if err = jsonParser.Decode(&appInfo); err != nil {
+		log.Fatal(err)
+	}
+	return &appInfo
 }

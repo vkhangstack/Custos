@@ -1,8 +1,9 @@
 import { Home, FileText, Settings, Network as NetworkIcon, ChevronLeft, ChevronRight, Globe } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { APP_CONFIG } from '../config';
 import { useTranslation } from 'react-i18next';
+import { GetAppInfo } from '../../wailsjs/go/main/App'
 
 const Sidebar = () => {
     const [isCollapsed, setIsCollapsed] = useState(false);
@@ -16,11 +17,21 @@ const Sidebar = () => {
     const navItems = [
         { icon: Home, label: t('sidebar.dashboard'), path: '/' },
         { icon: NetworkIcon, label: t('sidebar.traffic'), path: '/traffic' },
-        { icon: Globe, label: t('sidebar.proxy'), path: '/proxy' },
+        // { icon: Globe, label: t('sidebar.proxy'), path: '/proxy' },
         { icon: FileText, label: t('sidebar.rules'), path: '/rules' },
-        { icon: FileText, label: t('sidebar.reports'), path: '/reports' },
+        // { icon: FileText, label: t('sidebar.reports'), path: '/reports' },
         { icon: Settings, label: t('sidebar.settings'), path: '/settings' },
     ];
+
+    useEffect(() => {
+        const init = async () => {
+            const appInfo = await GetAppInfo();
+            APP_CONFIG.appName = appInfo.name;
+            APP_CONFIG.appVersion = appInfo.version;
+            APP_CONFIG.appAuthor = appInfo.author;
+        };
+        init();
+    }, []);
 
     return (
         <div className={`flex flex-col h-screen bg-card border-r border-border text-card-foreground shadow-xl transition-[width] duration-300 ease-in-out shrink-0 ${isCollapsed ? 'w-20' : 'w-64'}`}>
@@ -75,7 +86,7 @@ const Sidebar = () => {
                     </>
                 ) : (
                     <div className="text-xs">
-                        <span className="block mb-1">{APP_CONFIG.appShortVersion}</span>
+                        <span className="block mb-1">{APP_CONFIG.appVersion}</span>
                     </div>
                 )}
             </div>
