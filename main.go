@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 
+	"github.com/getlantern/systray"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/logger"
 	"github.com/wailsapp/wails/v2/pkg/menu"
@@ -20,6 +22,12 @@ import (
 
 //go:embed all:frontend/dist
 var assets embed.FS
+
+//go:embed build/appicon.png
+var iconData []byte
+
+//go:embed build/windows/icon.ico
+var iconIco []byte
 
 func main() {
 	// Resolve log path
@@ -42,15 +50,11 @@ func main() {
 		AppMenu.Append(menu.AppMenu()) // On macOS platform, this must be done right after `NewMenu()`
 	}
 	FileMenu := AppMenu.AddSubmenu("File")
-	// FileMenu.AddText("Open", keys.CmdOrCtrl("o"), func(_ *menu.CallbackData) {
-	// 	// do something
-	// })
 	FileMenu.AddText("Reload", keys.CmdOrCtrl("r"), func(_ *menu.CallbackData) {
 		rt.WindowReloadApp(app.ctx)
 	})
 	FileMenu.AddSeparator()
 	FileMenu.AddText("Quit", keys.CmdOrCtrl("q"), func(_ *menu.CallbackData) {
-		// `rt` is an alias of "github.com/wailsapp/wails/v2/pkg/runtime" to prevent collision with standard package
 		rt.Quit(app.ctx)
 	})
 
@@ -74,6 +78,7 @@ func main() {
 			DefaultButton: "OK",
 		})
 	})
+
 	// Create application with options
 	err = wails.Run(&options.App{
 		Title:             strings.ToTitle(app.GetAppInfo().Name[:1]) + strings.ToLower(app.GetAppInfo().Name[1:]),
@@ -86,11 +91,14 @@ func main() {
 			Assets: assets,
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
-		OnStartup:        app.startup,
-		OnShutdown:       app.shutdown,
-		Menu:             AppMenu,
+		OnStartup: func(ctx context.Context) {
+			app.startup(ctx)
+			go setupTray(app)
+		},
+		OnShutdown: app.shutdown,
+		Menu:       AppMenu,
 		Linux: &linux.Options{
-			Icon:             []byte("build/appicon.png"),
+			Icon:             iconData,
 			ProgramName:      strings.ToLower(app.GetAppInfo().Name),
 			WebviewGpuPolicy: linux.WebviewGpuPolicyAlways,
 		},
@@ -106,4 +114,33 @@ func main() {
 	if err != nil {
 		println("Error:", err.Error())
 	}
+}
+
+func setupTray(app *App) {
+	systray.Run(func() {
+		if runtime.GOOS == "windows" {
+			systray.SetIcon(iconIco)
+		} else {
+			systray.SetIcon(iconData)
+		}
+		systray.SetTitle(app.GetAppInfo().Name)
+		systray.SetTooltip(app.GetAppInfo().Name)
+
+		mShow := systray.AddMenuItem("Show", "Show the main window")
+		systray.AddSeparator()
+		mQuit := systray.AddMenuItem("Quit", "Quit the application")
+
+		for {
+			select {
+			case <-mShow.ClickedCh:
+				rt.WindowShow(app.ctx)
+			case <-mQuit.ClickedCh:
+				systray.Quit()
+				rt.Quit(app.ctx)
+				return
+			}
+		}
+	}, func() {
+		// OnExit
+	})
 }

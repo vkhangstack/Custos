@@ -127,7 +127,7 @@ export const en = {
             libraries: "Open Source Libraries",
             license: "License",
             viewWebsite: "View Website",
-            footer: "Made with ❤️ via Agentic Coding"
+            footer: "Made with ❤️ by vkhangstack"
         }
     }
 };

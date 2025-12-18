@@ -127,7 +127,7 @@ export const vi = {
             libraries: "Thư viện mã nguồn mở",
             license: "Giấy phép",
             viewWebsite: "Xem trang web",
-            footer: "Được thực hiện với ❤️ thông qua Agentic Coding"
+            footer: "Được thực hiện với ❤️ bởi vkhangstack"
         }
     }
 };

@@ -43,8 +43,15 @@ func (m *BlocklistManager) Load() error {
 }
 
 func (m *BlocklistManager) loadSource(url string) error {
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Get(url)
+	client := &http.Client{Timeout: 30 * time.Second}
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	// Force connection close to avoid "Unsolicited response received on idle HTTP channel"
+	req.Close = true
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
