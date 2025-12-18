@@ -65,11 +65,11 @@ func (s *Server) handleRequest(w dns.ResponseWriter, r *dns.Msg) {
 		entry := core.LogEntry{
 			ID:        utils.GenerateIDString(),
 			Timestamp: time.Now(),
-			Type:      "dns",
+			Type:      core.LogSourceDNS,
 			Domain:    q.Name,
 			SrcIP:     w.RemoteAddr().String(),
-			Protocol:  "udp",
-			Status:    "blocked",
+			Protocol:  core.ProtocolUDP,
+			Status:    core.LogStatusBlocked,
 			BytesSent: 0,
 			BytesRecv: 0,
 		}
@@ -96,11 +96,11 @@ func (s *Server) handleRequest(w dns.ResponseWriter, r *dns.Msg) {
 	entry := core.LogEntry{
 		ID:        utils.GenerateIDString(),
 		Timestamp: time.Now(),
-		Type:      "dns",
+		Type:      core.LogSourceDNS,
 		Domain:    q.Name,
 		SrcIP:     w.RemoteAddr().String(),
-		Protocol:  "udp",
-		Status:    "allowed",
+		Protocol:  core.ProtocolUDP,
+		Status:    core.LogStatusAllowed,
 	}
 	s.store.AddLog(entry)
 

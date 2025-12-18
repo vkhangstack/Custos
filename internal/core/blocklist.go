@@ -76,17 +76,9 @@ func (m *BlocklistManager) IsBlocked(domain string) bool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	// Check exact match
-	if m.domains[domain] {
-		return true
-	}
-
-	// Check subdomains (e.g., ads.google.com -> google.com blocked?)
-	// This simple version just checks exact match for now as hosts files usually list all subdomains.
-	// We can add suffix matching if needed.
-
 	// Remove trailing dot if present (DNS validity)
 	domain = strings.TrimSuffix(domain, ".")
+
 	return m.domains[domain]
 }
 
