@@ -140,6 +140,7 @@ func main() {
 }
 
 func setupTray(app *App) {
+	runtime.LockOSThread()
 	systray.Run(func() {
 		if runtime.GOOS == "windows" {
 			systray.SetIcon(iconIco)
@@ -156,6 +157,7 @@ func setupTray(app *App) {
 		for {
 			select {
 			case <-mShow.ClickedCh:
+				rt.WindowUnminimise(app.ctx)
 				rt.WindowShow(app.ctx)
 			case <-mQuit.ClickedCh:
 				systray.Quit()
