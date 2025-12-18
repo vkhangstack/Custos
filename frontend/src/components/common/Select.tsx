@@ -1,4 +1,4 @@
-import { LucideIcon } from 'lucide-react';
+import { LucideIcon, ChevronDown } from 'lucide-react';
 import React from 'react';
 
 interface SelectOption {
@@ -47,6 +47,7 @@ const Select: React.FC<SelectProps> = ({
                     className={`
                         bg-input border border-border text-foreground text-sm rounded-lg 
                         focus:ring-primary focus:border-primary block w-full p-2.5 
+                        appearance-none pr-10
                         ${Icon ? 'pl-10' : ''}
                         ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
                         transition-colors
@@ -59,6 +60,9 @@ const Select: React.FC<SelectProps> = ({
                         </option>
                     ))}
                 </select>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none text-muted-foreground/50">
+                    <ChevronDown size={16} />
+                </div>
             </div>
             {description && (
                 <p className="mt-1 text-xs text-muted-foreground">{description}</p>

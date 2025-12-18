@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { GetLogs, GetStats, GetSystemConnections } from '../../wailsjs/go/main/App';
 import { core, system } from '../../wailsjs/go/models';
 import PageHeader from '../components/common/PageHeader';
+import Select from '../components/common/Select';
 
 export default function Traffic() {
     const { t } = useTranslation();
@@ -12,6 +13,9 @@ export default function Traffic() {
     const [stats, setStats] = useState<core.Stats>(new core.Stats());
     const [connections, setConnections] = useState<system.ConnectionInfo[]>([]);
     const [activeTab, setActiveTab] = useState<'logs' | 'connections'>('logs');
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [typeFilter, setTypeFilter] = useState('all');
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     const fetchData = async () => {
         try {
@@ -26,6 +30,12 @@ export default function Traffic() {
         } catch (error) {
             console.error("Failed to fetch traffic data:", error);
         }
+    };
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        await fetchData();
+        setTimeout(() => setIsRefreshing(false), 500);
     };
 
     useEffect(() => {
@@ -51,11 +61,14 @@ export default function Traffic() {
         }
     };
 
-    const filteredLogs = logs.filter(log =>
-        log.domain?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        log.process_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        log.dst_ip?.includes(searchQuery)
-    );
+    const filteredLogs = logs.filter(log => {
+        const matchesSearch = log.domain?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            log.process_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            log.dst_ip?.includes(searchQuery);
+        const matchesStatus = statusFilter === 'all' || log.status === statusFilter;
+        const matchesType = typeFilter === 'all' || log.type === typeFilter;
+        return matchesSearch && matchesStatus && matchesType;
+    });
 
     const filteredConnections = connections.filter(conn =>
         conn.process_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -63,7 +76,27 @@ export default function Traffic() {
     );
 
     const actions = (
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+            <Select
+                value={statusFilter}
+                onChange={setStatusFilter}
+                options={[
+                    { label: 'All Status', value: 'all' },
+                    { label: 'Allowed', value: 'allowed' },
+                    { label: 'Blocked', value: 'blocked' },
+                ]}
+                className="w-32"
+            />
+            <Select
+                value={typeFilter}
+                onChange={setTypeFilter}
+                options={[
+                    { label: 'All Types', value: 'all' },
+                    { label: 'DNS', value: 'dns' },
+                    { label: 'Proxy', value: 'proxy' },
+                ]}
+                className="w-28"
+            />
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
                 <input
@@ -74,15 +107,12 @@ export default function Traffic() {
                     className="pl-9 pr-4 py-2 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground w-64"
                 />
             </div>
-            <button className="p-2 hover:bg-muted rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors">
-                <Filter size={18} />
-            </button>
             <button
-                onClick={fetchData}
+                onClick={handleRefresh}
                 className="p-2 hover:bg-muted rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors"
                 title="Refresh"
             >
-                <RefreshCw size={18} />
+                <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
             </button>
         </div>
     );

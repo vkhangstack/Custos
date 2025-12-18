@@ -72,6 +72,16 @@ func main() {
 	AboutMenu.AddText("Open Source", keys.CmdOrCtrl("o"), func(_ *menu.CallbackData) {
 		// rt.BrowserOpenURL(app.ctx, "https://github.com/vkhangstack/Custos")
 	})
+	AboutMenu.AddText("Reset Data", keys.Combo("c", keys.CmdOrCtrlKey, keys.ShiftKey), func(_ *menu.CallbackData) {
+		app.store.ResetStats()
+		rt.MessageDialog(app.ctx, rt.MessageDialogOptions{
+			Type:          rt.InfoDialog,
+			Title:         "Reset Data",
+			Message:       "Data reset successfully",
+			Buttons:       []string{"OK"},
+			DefaultButton: "OK",
+		})
+	})
 	// Create application with options
 	err = wails.Run(&options.App{
 		Title:             strings.ToTitle(app.GetAppInfo().Name[:1]) + strings.ToLower(app.GetAppInfo().Name[1:]),
