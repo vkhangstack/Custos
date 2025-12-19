@@ -557,12 +557,12 @@ func (s *SQLiteStore) TruncateRules() error {
 }
 
 func (s *SQLiteStore) IncrementRuleHit(id string, domain string) error {
-	// De-duplicate hits within a 5-second window per rule/domain
+	// De-duplicate hits within a 5ms window per rule/domain
 	cacheKey := id + ":" + domain
 	now := time.Now()
 	if lastHit, ok := s.hitCache.Load(cacheKey); ok {
-		if now.Sub(lastHit.(time.Time)) < 1*time.Second {
-			// Skip incrementing if last hit was less than 1s ago
+		if now.Sub(lastHit.(time.Time)) < 5*time.Millisecond {
+			// Skip incrementing if last hit was less than 5ms ago
 			return nil
 		}
 	}
@@ -572,11 +572,11 @@ func (s *SQLiteStore) IncrementRuleHit(id string, domain string) error {
 }
 
 func (s *SQLiteStore) IncrementAdblockHit(domain string) error {
-	// De-duplicate hits within a 1-second window per domain
+	// De-duplicate hits within a 50ms window per domain
 	cacheKey := "adblock:" + domain
 	now := time.Now()
 	if lastHit, ok := s.hitCache.Load(cacheKey); ok {
-		if now.Sub(lastHit.(time.Time)) < 200*time.Millisecond {
+		if now.Sub(lastHit.(time.Time)) < 50*time.Millisecond {
 			return nil
 		}
 	}

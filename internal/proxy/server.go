@@ -229,16 +229,6 @@ func (r *LoggingRuleSet) Allow(ctx context.Context, req *socks5.Request) (contex
 		}
 	}
 
-	// Check Blocklist
-	if r.blocklist.IsBlocked(domain) {
-		r.store.IncrementAdblockHit(domain)
-		r.logBlock(req, domain, string(core.RuleSourceBlocklist), &core.Process{
-			PID:  procID,
-			Name: procName,
-		})
-		return ctx, false
-	}
-
 	// Check Custom Rules
 	// Optimized: Could cache this or use a more efficient matcher
 	rules := r.store.GetRules()
@@ -254,44 +244,45 @@ func (r *LoggingRuleSet) Allow(ctx context.Context, req *socks5.Request) (contex
 		if matched, _ := matchDomain(rule.Pattern, domain); matched {
 			r.store.IncrementRuleHit(rule.ID, domain)
 
+			if rule.Type == core.RuleAllow {
+				r.logAllow(req, domain, &core.Process{
+					PID:  procID,
+					Name: procName,
+				}, utils.GenerateIDString())
+				return ctx, true
+			}
+
 			if rule.Type == core.RuleBlock {
 				r.store.IncrementAdblockHit(domain)
-
 				r.logBlock(req, domain, string(core.RuleSourceAdsblock), &core.Process{
 					PID:  procID,
 					Name: procName,
 				})
 				return ctx, false
 			}
-			// If ALLOW, we stop checking other block rules
-			break
 		}
 	}
 
-	// ... continue to allow
-
-	// Log the connection attempt
-	// Define variables
-	destIP := req.DestAddr.IP.String()
-
-	entry := core.LogEntry{
-		ID:          utils.GenerateIDString(),
-		Timestamp:   time.Now(),
-		Type:        core.LogSourceProxy,
-		Domain:      domain, // Could be empty if IP
-		DstIP:       destIP,
-		DstPort:     req.DestAddr.Port,
-		SrcIP:       req.RemoteAddr.IP.String(),
-		Protocol:    core.ProtocolTCP,
-		ProcessName: procName,
-		ProcessID:   procID,
-		Status:      core.LogStatusAllowed,
+	// Check Blocklist
+	if r.blocklist.IsBlocked(domain) {
+		r.store.IncrementAdblockHit(domain)
+		r.logBlock(req, domain, string(core.RuleSourceBlocklist), &core.Process{
+			PID:  procID,
+			Name: procName,
+		})
+		return ctx, false
 	}
 
-	r.store.AddLog(entry)
+	// Log the connection attempt
+	logID := utils.GenerateIDString()
+
+	r.logAllow(req, domain, &core.Process{
+		PID:  procID,
+		Name: procName,
+	}, logID)
 
 	// Inject logID into context for Dial to pick up
-	return context.WithValue(ctx, logIDKey, entry.ID), true
+	return context.WithValue(ctx, logIDKey, logID), true
 }
 
 // matchDomain checks if domain matches pattern
@@ -325,5 +316,25 @@ func (r *LoggingRuleSet) logBlock(req *socks5.Request, domain string, reason str
 		ProcessID:   process.PID,
 		Reason:      &reason,
 	}
+	r.store.AddLog(entry)
+}
+
+func (r *LoggingRuleSet) logAllow(req *socks5.Request, domain string, process *core.Process, id string) {
+	entry := core.LogEntry{
+		ID:          id,
+		Timestamp:   time.Now(),
+		Type:        core.LogSourceProxy,
+		DstIP:       req.DestAddr.IP.String(),
+		DstPort:     req.DestAddr.Port,
+		SrcIP:       req.RemoteAddr.IP.String(),
+		Domain:      domain,
+		Protocol:    core.ProtocolTCP,
+		Status:      core.LogStatusAllowed,
+		BytesSent:   0,
+		BytesRecv:   0,
+		ProcessName: process.Name,
+		ProcessID:   process.PID,
+	}
+
 	r.store.AddLog(entry)
 }
