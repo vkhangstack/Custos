@@ -3,7 +3,8 @@
 # Exit on error
 set -e
 
-echo "Building Custos for Linux..."
+echo "Building libadblock Rust library..."
+./lib/adblock/build.sh
 
 # Build the app using Wails
 wails build -platform linux/amd64

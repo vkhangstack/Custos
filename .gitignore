@@ -8,3 +8,5 @@ custos.db
 target
 .custos/
 Custos*
+custos-*.deb
+custos-*.rpm

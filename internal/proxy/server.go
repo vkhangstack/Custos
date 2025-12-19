@@ -75,7 +75,6 @@ func (s *Server) SetAdblockEnabled(enabled bool) {
 }
 
 func (s *Server) ReloadAdblockEngine(rules string) {
-	// Create new engine outside the lock (heavy operation)
 	newEngine := adblock.NewEngine(rules)
 	log.Printf("Adblock engine parsed with %d bytes of rules", len(rules))
 
@@ -84,7 +83,6 @@ func (s *Server) ReloadAdblockEngine(rules string) {
 	s.adblockEngine = newEngine
 	s.mu.Unlock()
 
-	// Close old engine outside the lock
 	if oldEngine != nil {
 		oldEngine.Close()
 	}
@@ -255,9 +253,10 @@ func (r *LoggingRuleSet) Allow(ctx context.Context, req *socks5.Request) (contex
 		// Go's filepath.Match is good for globs.
 		if matched, _ := matchDomain(rule.Pattern, domain); matched {
 			r.store.IncrementRuleHit(rule.ID, domain)
-			r.store.IncrementAdblockHit(domain)
 
 			if rule.Type == core.RuleBlock {
+				r.store.IncrementAdblockHit(domain)
+
 				r.logBlock(req, domain, string(core.RuleSourceAdsblock), &core.Process{
 					PID:  procID,
 					Name: procName,

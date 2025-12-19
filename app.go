@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -485,7 +486,7 @@ func (a *App) RefreshAdblockFilters() error {
 		content, err := a.getFilterContent(f)
 		if err == nil {
 			allRules.WriteString("\n")
-			allRules.WriteString(content)
+			allRules.WriteString(a.normalizeFilterRules(content))
 		}
 	}
 
@@ -553,9 +554,6 @@ func (a *App) seedFilters() {
 		{"Easy List", "https://justdomains.github.io/blocklists/lists/easylist-justdomains.txt"},
 		{"Easy Privacy", "https://justdomains.github.io/blocklists/lists/easyprivacy-justdomains.txt"},
 		{"NoCoin", "https://justdomains.github.io/blocklists/lists/nocoin-justdomains.txt"},
-		{"Youtube Clear View", "https://github.com/yokoffing/filterlists/blob/main/youtube_clear_view.txt"},
-		{"Privacy Essentials", "https://github.com/yokoffing/filterlists/blob/main/privacy_essentials.txt"},
-		{"Abblock Pro Mini", "https://github.com/hagezi/dns-blocklists/blob/main/adblock/pro.mini.txt"},
 		{"Pi-hole", "https://raw.githubusercontent.com/xxcriticxx/.pl-host-file/master/hosts.txt"},
 		{"Ramnit", "https://1275.ru/DGA/ramnit.txt"},
 		{"SharkBot", "https://1275.ru/DGA/sharkbot.txt"},
@@ -588,4 +586,35 @@ func (a *App) seedFilters() {
 	if added {
 		go a.RefreshAdblockFilters()
 	}
+}
+
+func (a *App) normalizeFilterRules(content string) string {
+	var normalized strings.Builder
+	scanner := bufio.NewScanner(strings.NewReader(content))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "!") || strings.HasPrefix(line, "#") {
+			normalized.WriteString(line + "\n")
+			continue
+		}
+
+		// Check if it's hosts format: IP Domain
+		parts := strings.Fields(line)
+		if len(parts) >= 2 {
+			firstPart := parts[0]
+			// Very simple check if first part is an IP-like string
+			if firstPart == "127.0.0.1" || firstPart == "0.0.0.0" || strings.Contains(firstPart, ":") {
+				// It's a hosts line, convert to ||domain^
+				domain := parts[1]
+				if strings.Contains(domain, ".") {
+					normalized.WriteString("||" + domain + "^\n")
+					continue
+				}
+			}
+		}
+
+		// Default: keep as is (already an adblock rule or comment)
+		normalized.WriteString(line + "\n")
+	}
+	return normalized.String()
 }
