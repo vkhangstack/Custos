@@ -5,6 +5,7 @@ import { GetLogsPaginated, GetStats, GetSystemConnections } from '../../wailsjs/
 import { core, system } from '../../wailsjs/go/models';
 import PageHeader from '../components/common/PageHeader';
 import Select from '../components/common/Select';
+import CopyButton from '../components/common/CopyButton';
 
 export default function Traffic() {
     const { t } = useTranslation();
@@ -235,8 +236,13 @@ export default function Traffic() {
                                                 {log.process_id ? <span className="text-xs text-muted-foreground ml-1">({log.process_id})</span> : ''}
                                             </td>
                                             <td className="p-4 text-foreground font-mono text-xs min-w-[200px]">
-                                                <div className="font-medium text-sm mb-0.5">{log.domain || '-'}</div>
-                                                <div className="text-muted-foreground">{log.dst_ip}:{log.dst_port}</div>
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <div>
+                                                        <div className="font-medium text-sm mb-0.5">{log.domain || '-'}</div>
+                                                        <div className="text-muted-foreground">{log.dst_ip}:{log.dst_port}</div>
+                                                    </div>
+                                                    <CopyButton text={log.domain || `${log.dst_ip}:${log.dst_port}`} />
+                                                </div>
                                             </td>
                                             <td className="p-4 items-center flex justify-start">
                                                 {log.reason ? <span className={`px-2 py-0.5 rounded text-xs font-medium border ${log.reason === 'adsblock' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : 'bg-purple-500/10 text-purple-500 border-purple-500/20'}`}>
