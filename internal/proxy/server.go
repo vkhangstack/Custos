@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync"
 	"time"
 
+	"github.com/vkhangstack/Custos/internal/adblock"
 	"github.com/vkhangstack/Custos/internal/core"
 	"github.com/vkhangstack/Custos/internal/store"
 	"github.com/vkhangstack/Custos/internal/system"
@@ -27,22 +29,64 @@ type Server struct {
 	running           bool
 	listener          net.Listener
 	protectionEnabled bool
+	adblockEnabled    bool
+	adblockEngine     *adblock.Engine
+	mu                sync.RWMutex
 }
 
 // NewServer creates a new proxy server
 func NewServer(store store.Store, blocklist *core.BlocklistManager, systemTracker *system.Tracker, port int) *Server {
+	// Initialize adblock engine with default rules for now
+	// In the future, this can be loaded from DB or files
+	adblockRules := `||ads.google.com^
+||doubleclick.net^
+||adnxs.com^
+||googleadservices.com^
+||pagead2.googlesyndication.com^
+||analytics.google.com^
+||facebook.com/tr/^
+`
+	engine := adblock.NewEngine(adblockRules)
+
 	return &Server{
-		store:         store,
-		blocklist:     blocklist,
-		systemTracker: systemTracker,
-		port:          port,
+		store:             store,
+		blocklist:         blocklist,
+		systemTracker:     systemTracker,
+		port:              port,
+		adblockEngine:     engine,
+		protectionEnabled: true, // Default
 	}
 }
 
 // SetProtection enables or disables the HTTP protection
 func (s *Server) SetProtection(enabled bool) {
+	s.mu.Lock()
 	s.protectionEnabled = enabled
+	s.mu.Unlock()
 	log.Printf("Protection mode set to: %v", enabled)
+}
+
+// SetAdblockEnabled enables or disables the adblock engine
+func (s *Server) SetAdblockEnabled(enabled bool) {
+	s.mu.Lock()
+	s.adblockEnabled = enabled
+	s.mu.Unlock()
+	log.Printf("Adblock engine enabled: %v", enabled)
+}
+
+func (s *Server) ReloadAdblockEngine(rules string) {
+	newEngine := adblock.NewEngine(rules)
+	log.Printf("Adblock engine parsed with %d bytes of rules", len(rules))
+
+	s.mu.Lock()
+	oldEngine := s.adblockEngine
+	s.adblockEngine = newEngine
+	s.mu.Unlock()
+
+	if oldEngine != nil {
+		oldEngine.Close()
+	}
+	log.Printf("Adblock engine swapped successfully")
 }
 
 const logIDKey = "logID"
@@ -118,6 +162,9 @@ func (s *Server) Stop() {
 	if s.listener != nil {
 		s.listener.Close()
 	}
+	if s.adblockEngine != nil {
+		s.adblockEngine.Close()
+	}
 }
 
 // GetPort returns the current port
@@ -157,25 +204,29 @@ func (r *LoggingRuleSet) Allow(ctx context.Context, req *socks5.Request) (contex
 		procName, procID = r.server.systemTracker.GetProcessFromPort(req.RemoteAddr.Port)
 	}
 
-	// Check Protection Mode (Block HTTP Port 80)
-	if r.server.protectionEnabled {
-		if req.DestAddr.Port == 80 {
-			r.logBlock(req, domain, string(core.RuleSourceProtocolHttpBlocked), &core.Process{
+	// Check Adblock Engine
+	sEnabled := false
+	var engine *adblock.Engine
+
+	r.server.mu.RLock()
+	sEnabled = r.server.adblockEnabled
+	engine = r.server.adblockEngine
+	r.server.mu.RUnlock()
+
+	if sEnabled && engine != nil {
+		testURL := "http://" + domain
+		log.Printf("[DEBUG] Checking adblock for: %s", testURL)
+		if engine.Check(testURL, "http://"+domain, "other") {
+			r.store.IncrementAdblockHit(domain)
+			r.logBlock(req, domain, string(core.RuleSourceAdsblock), &core.Process{
 				PID:  procID,
 				Name: procName,
 			})
-			log.Printf("Blocked HTTP request to %s (Port 80) due to active protection", domain)
+			log.Printf("Blocked by adblock engine: %s", domain)
 			return ctx, false
+		} else {
+			log.Printf("[DEBUG] Not blocked by adblock: %s", domain)
 		}
-	}
-
-	// Check Blocklist
-	if r.blocklist.IsBlocked(domain) {
-		r.logBlock(req, domain, string(core.RuleSourceBlocklist), &core.Process{
-			PID:  procID,
-			Name: procName,
-		})
-		return ctx, false
 	}
 
 	// Check Custom Rules
@@ -192,42 +243,46 @@ func (r *LoggingRuleSet) Allow(ctx context.Context, req *socks5.Request) (contex
 		// Go's filepath.Match is good for globs.
 		if matched, _ := matchDomain(rule.Pattern, domain); matched {
 			r.store.IncrementRuleHit(rule.ID, domain)
+
+			if rule.Type == core.RuleAllow {
+				r.logAllow(req, domain, &core.Process{
+					PID:  procID,
+					Name: procName,
+				}, utils.GenerateIDString())
+				return ctx, true
+			}
+
 			if rule.Type == core.RuleBlock {
-				r.logBlock(req, domain, string(core.RuleSourceCustom), &core.Process{
+				r.store.IncrementAdblockHit(domain)
+				r.logBlock(req, domain, string(core.RuleSourceAdsblock), &core.Process{
 					PID:  procID,
 					Name: procName,
 				})
 				return ctx, false
 			}
-			// If ALLOW, we stop checking other block rules
-			break
 		}
 	}
 
-	// ... continue to allow
-
-	// Log the connection attempt
-	// Define variables
-	destIP := req.DestAddr.IP.String()
-
-	entry := core.LogEntry{
-		ID:          utils.GenerateIDString(),
-		Timestamp:   time.Now(),
-		Type:        core.LogSourceProxy,
-		Domain:      domain, // Could be empty if IP
-		DstIP:       destIP,
-		DstPort:     req.DestAddr.Port,
-		SrcIP:       req.RemoteAddr.IP.String(),
-		Protocol:    core.ProtocolTCP,
-		ProcessName: procName,
-		ProcessID:   procID,
-		Status:      core.LogStatusAllowed,
+	// Check Blocklist
+	if r.blocklist.IsBlocked(domain) {
+		r.store.IncrementAdblockHit(domain)
+		r.logBlock(req, domain, string(core.RuleSourceBlocklist), &core.Process{
+			PID:  procID,
+			Name: procName,
+		})
+		return ctx, false
 	}
 
-	r.store.AddLog(entry)
+	// Log the connection attempt
+	logID := utils.GenerateIDString()
+
+	r.logAllow(req, domain, &core.Process{
+		PID:  procID,
+		Name: procName,
+	}, logID)
 
 	// Inject logID into context for Dial to pick up
-	return context.WithValue(ctx, logIDKey, entry.ID), true
+	return context.WithValue(ctx, logIDKey, logID), true
 }
 
 // matchDomain checks if domain matches pattern
@@ -259,6 +314,27 @@ func (r *LoggingRuleSet) logBlock(req *socks5.Request, domain string, reason str
 		BytesRecv:   0,
 		ProcessName: process.Name,
 		ProcessID:   process.PID,
+		Reason:      &reason,
 	}
+	r.store.AddLog(entry)
+}
+
+func (r *LoggingRuleSet) logAllow(req *socks5.Request, domain string, process *core.Process, id string) {
+	entry := core.LogEntry{
+		ID:          id,
+		Timestamp:   time.Now(),
+		Type:        core.LogSourceProxy,
+		DstIP:       req.DestAddr.IP.String(),
+		DstPort:     req.DestAddr.Port,
+		SrcIP:       req.RemoteAddr.IP.String(),
+		Domain:      domain,
+		Protocol:    core.ProtocolTCP,
+		Status:      core.LogStatusAllowed,
+		BytesSent:   0,
+		BytesRecv:   0,
+		ProcessName: process.Name,
+		ProcessID:   process.PID,
+	}
+
 	r.store.AddLog(entry)
 }

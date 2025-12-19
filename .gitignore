@@ -4,3 +4,9 @@ frontend/dist
 application-logs.txt
 Custos*.deb
 custos.db
+
+target
+.custos/
+Custos*
+custos-*.deb
+custos-*.rpm

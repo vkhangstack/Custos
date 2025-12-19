@@ -2,8 +2,8 @@
     "name": "Custos",
     "version": "1.0.0",
     "icon": "",
-    "description": "A privacy-focused web browser",
+    "description": "Custos is a desktop application that acts as a “guardian” for your local network, sitting between your devices and the internet to monitor and filter traffic.",
     "author": "vkhangstack",
-    "contact" : "https://phamvankhang.name.vn",
+    "contact": "https://phamvankhang.name.vn",
     "license": "MIT"
 }

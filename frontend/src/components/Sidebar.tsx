@@ -1,6 +1,6 @@
-import { Home, FileText, Settings, Network as NetworkIcon, ChevronLeft, ChevronRight, Globe } from 'lucide-react';
+import { Home, FileText, Settings, Network as NetworkIcon, ChevronLeft, ChevronRight, Globe, Shield } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GetAppInfo } from '../../wailsjs/go/main/App';
 
@@ -22,7 +22,7 @@ const Sidebar = () => {
         { icon: NetworkIcon, label: t('sidebar.traffic'), path: '/traffic' },
         // { icon: Globe, label: t('sidebar.proxy'), path: '/proxy' },
         { icon: FileText, label: t('sidebar.rules'), path: '/rules' },
-        // { icon: FileText, label: t('sidebar.reports'), path: '/reports' },
+        { icon: Shield, label: t('sidebar.adblock'), path: '/adblock-filters' },
         { icon: Settings, label: t('sidebar.settings'), path: '/settings' },
     ];
 
@@ -77,18 +77,12 @@ const Sidebar = () => {
                     {!isCollapsed && <span>{i18n.language === 'en' ? 'EN' : 'VI'}</span>}
                 </button>
 
-                {!isCollapsed ? (   
-                    <>
+                {!isCollapsed && (
+                    <Fragment>
                         <div className="flex justify-between items-center mb-1">
-                            {/* <span className="font-semibold text-foreground">{config?.name}</span> */}
                             <span className="bg-accent px-1.5 py-0.5 rounded text-xs text-accent-foreground">{config?.version}</span>
                         </div>
-                        {/* <div className="text-xs">{t('sidebar.author')}: {config.appAuthor}</div> */}
-                    </>
-                ) : (
-                    <div className="text-xs flex justify-center items-center w-full">
-                        <span className="block text-center justify-center w-full">{config?.version}</span>
-                    </div>
+                    </Fragment>
                 )}
             </div>
         </div>

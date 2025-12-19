@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Custos
+Comment=Custos - The Privacy First VPN
+Exec=custos
+Icon=custos
+Terminal=false
+Type=Application
+Categories=Utility;Network;
+TerminalOptions=
+X-KDE-SubstituteUID=false
+X-KDE-Username=

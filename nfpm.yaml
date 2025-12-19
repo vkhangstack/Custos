@@ -11,7 +11,16 @@ contents:
   - src: build/bin/Custos
     dst: /usr/bin/custos
     type: file
+  - src: custos.desktop
+    dst: /usr/share/applications/custos.desktop
+    type: file
+  - src: build/appicon.png
+    dst: /usr/share/pixmaps/custos.png
+    type: file
 
 depends:
   - libgtk-3-0
   - libwebkit2gtk-4.1-0
+
+scripts:
+  postremove: scripts/postremove.sh

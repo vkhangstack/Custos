@@ -95,8 +95,8 @@ func (c *CountingConn) report() {
 
 // Close wraps Close to log final stats
 func (c *CountingConn) Close() error {
-	// Force a final report
-	c.report()
-	fmt.Printf("[DEBUG] Closed conn %s. Final sent/recv: %d/%d\n", c.entry.ID, c.reportedSent, c.reportedRecv)
+	// Force a final report in a goroutine to not block the connection close
+	go c.report()
+	fmt.Printf("[DEBUG] Closing conn %s. Last reported sent/recv: %d/%d\n", c.entry.ID, c.reportedSent, c.reportedRecv)
 	return c.Conn.Close()
 }

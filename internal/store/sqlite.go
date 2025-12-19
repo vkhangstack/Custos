@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -39,7 +40,7 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 	}
 
 	// Auto-migrate schema
-	if err := db.AutoMigrate(&core.LogEntry{}, &core.TrafficStatsModel{}, &core.Rule{}, &core.AppSetting{}); err != nil {
+	if err := db.AutoMigrate(&core.LogEntry{}, &core.TrafficStatsModel{}, &core.Rule{}, &core.AppSetting{}, &core.AdblockFilter{}); err != nil {
 		return nil, err
 	}
 
@@ -165,8 +166,53 @@ func (s *SQLiteStore) AddTraffic(upload, download int64) {
 // GetRecentLogs returns the last N logs
 func (s *SQLiteStore) GetRecentLogs(limit int) []core.LogEntry {
 	var logs []core.LogEntry
-	s.db.Order("timestamp desc").Limit(limit).Find(&logs)
+	s.db.Order("id desc").Limit(limit).Find(&logs)
 	return logs
+}
+
+func (s *SQLiteStore) GetLogsPaginated(cursor string, limit int, search, status, logType string) ([]core.LogEntry, string, bool, int64, error) {
+	var logs []core.LogEntry
+	var total int64
+
+	query := s.db.Model(&core.LogEntry{})
+
+	if search != "" {
+		likePattern := "%" + search + "%"
+		query = query.Where("(domain LIKE ? OR process_name LIKE ? OR dst_ip LIKE ?)", likePattern, likePattern, likePattern)
+	}
+
+	if status != "" && status != "all" {
+		query = query.Where("status = ?", status)
+	}
+
+	if logType != "" && logType != "all" {
+		query = query.Where("type = ?", logType)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, "", false, 0, err
+	}
+
+	if cursor != "" {
+		query = query.Where("id < ?", cursor)
+	}
+
+	if err := query.Order("id desc").Limit(limit + 1).Find(&logs).Error; err != nil {
+		return nil, "", false, 0, err
+	}
+
+	hasMore := false
+	nextCursor := ""
+	if len(logs) > limit {
+		hasMore = true
+		logs = logs[:limit]
+	}
+
+	if len(logs) > 0 {
+		nextCursor = logs[len(logs)-1].ID
+	}
+
+	return logs, nextCursor, hasMore, total, nil
 }
 
 // GetStats calculates stats from DB
@@ -207,6 +253,12 @@ func (s *SQLiteStore) GetStats() core.Stats {
 		if target != "" {
 			stats.TopDomains[target] = total
 		}
+	}
+
+	// Adblock Hits
+	if val, err := s.GetSetting("adblock_hits"); err == nil {
+		hits, _ := strconv.ParseInt(val, 10, 64)
+		stats.AdblockHits = hits
 	}
 
 	stats.Timestamp = time.Now()
@@ -293,7 +345,11 @@ func (s *SQLiteStore) ResetData() {
 	s.db.Exec("DELETE FROM log_entries")
 	s.db.Exec("DELETE FROM traffic_stats_models")
 	s.db.Exec("DELETE FROM stats")
+	s.db.Exec("DELETE FROM settings")
+	s.db.Exec("DELETE FROM adblock_filters")
 	s.db.Exec("UPDATE rules SET hit_count = 0")
+
+	s.SetSetting("adblock_hits", "0")
 }
 
 // Rule Management Implementation
@@ -463,11 +519,12 @@ func (s *SQLiteStore) seedDefaultRules() {
 			existingRules[domain] = true
 
 			rules = append(rules, core.Rule{
-				ID:      utils.GenerateIDString(),
-				Type:    core.RuleBlock,
-				Pattern: domain,
-				Enabled: true,
-				Source:  core.RuleSourceDefault,
+				ID:       utils.GenerateIDString(),
+				Type:     core.RuleBlock,
+				Pattern:  domain,
+				Enabled:  true,
+				Source:   core.RuleSourceDefault,
+				HitCount: 0,
 			})
 		}
 	}
@@ -500,16 +557,61 @@ func (s *SQLiteStore) TruncateRules() error {
 }
 
 func (s *SQLiteStore) IncrementRuleHit(id string, domain string) error {
-	// De-duplicate hits within a 5-second window per rule/domain
+	// De-duplicate hits within a 5ms window per rule/domain
 	cacheKey := id + ":" + domain
 	now := time.Now()
 	if lastHit, ok := s.hitCache.Load(cacheKey); ok {
-		if now.Sub(lastHit.(time.Time)) < 1*time.Second {
-			// Skip incrementing if last hit was less than 1s ago
+		if now.Sub(lastHit.(time.Time)) < 5*time.Millisecond {
+			// Skip incrementing if last hit was less than 5ms ago
 			return nil
 		}
 	}
 	s.hitCache.Store(cacheKey, now)
 
 	return s.db.Model(&core.Rule{}).Where("id = ?", id).Update("hit_count", gorm.Expr("hit_count + 1")).Error
+}
+
+func (s *SQLiteStore) IncrementAdblockHit(domain string) error {
+	// De-duplicate hits within a 50ms window per domain
+	cacheKey := "adblock:" + domain
+	now := time.Now()
+	if lastHit, ok := s.hitCache.Load(cacheKey); ok {
+		if now.Sub(lastHit.(time.Time)) < 50*time.Millisecond {
+			return nil
+		}
+	}
+	s.hitCache.Store(cacheKey, now)
+
+	// Fetch current hits
+	currentHits := int64(0)
+	val, err := s.GetSetting("adblock_hits")
+	if err == nil {
+		currentHits, _ = strconv.ParseInt(val, 10, 64)
+	}
+
+	// Increment and save
+	currentHits++
+	return s.SetSetting("adblock_hits", strconv.FormatInt(currentHits, 10))
+}
+
+func (s *SQLiteStore) AddAdblockFilter(filter core.AdblockFilter) error {
+	return s.db.Create(&filter).Error
+}
+
+func (s *SQLiteStore) GetAdblockFilters() []core.AdblockFilter {
+	var filters []core.AdblockFilter
+	s.db.Find(&filters)
+	return filters
+}
+
+func (s *SQLiteStore) DeleteAdblockFilter(id string) error {
+	return s.db.Delete(&core.AdblockFilter{}, "id = ?", id).Error
+}
+
+func (s *SQLiteStore) UpdateAdblockFilter(filter core.AdblockFilter) error {
+	return s.db.Save(&filter).Error
+}
+
+func (s *SQLiteStore) ClearAdblockFilters() error {
+	return s.db.Exec("DELETE FROM adblock_filters").Error
 }

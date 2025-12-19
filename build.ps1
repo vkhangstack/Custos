@@ -14,6 +14,14 @@ $platform = "windows/amd64"
 # -platform: target platform
 # -ldflags: linker flags to reduce binary size and strip debug info
 # -nsis: generate installer
+
+# Build the adblock Rust library first
+& ".\lib\adblock\build.ps1"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Failed to build adblock library. Aborting." -ForegroundColor Red
+    exit 1
+}
+
 wails build -clean -platform $platform -ldflags "-s -w -H windowsgui" -nsis 
 
 if ($LASTEXITCODE -eq 0) {
